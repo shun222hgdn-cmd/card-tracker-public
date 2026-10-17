@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not setting.vpass_notice_confirmed %}
+<section class="notice">
+  <p><strong>はじめに:</strong> Vpassアプリ(または Web版Vpass)で「ご利用通知サービス」のメール通知がオンになっているか確認してください。通知メールが届かない取引は自動で取り込めません。</p>
+  <form method="post" action="{{ url_for('main.confirm_vpass') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="confirmed" value="1">
+    <input type="hidden" name="next" value="{{ url_for('main.home') }}">
+    <button type="submit">確認しました</button>
+  </form>
+</section>
+{% endif %}
+{% if not setting.period_confirmed %}
+<p class="notice">集計期間が初期値(今年1月〜12月)のままです。<a href="{{ url_for('main.settings') }}">設定画面</a>でカードの正式な期間を設定してください。</p>
+{% endif %}
+
+<section class="card">
+  <p class="label">対象利用額(推定)</p>
+  <p class="big">{{ summary.total|yen }}</p>
+  <progress value="{{ summary.rate_capped }}" max="100">{{ '%.1f'|format(summary.rate) }}%</progress>
+  <dl class="stats">
+    <div><dt>目標までの残額</dt><dd>{{ summary.remaining|yen }}</dd></div>
+    <div><dt>達成率</dt><dd>{{ '%.1f'|format(summary.rate) }}%</dd></div>
+    <div><dt>目標金額</dt><dd>{{ summary.target_amount|yen }}</dd></div>
+    <div><dt>集計期間</dt><dd>{{ summary.period_start.strftime('%Y/%m/%d') }} 〜 {{ summary.period_end.strftime('%Y/%m/%d') }}</dd></div>
+  </dl>
+  <p class="muted small">利用通知メールからの推定値です。最終的な特典の判定は三井住友カードの公式情報を優先してください。</p>
+</section>
+
+{% if summary.review_count %}
+<p class="notice warn"><a href="{{ url_for('main.history', status='review') }}">要確認の取引が {{ summary.review_count }} 件あります。</a>確認するまで集計に入りません。</p>
+{% endif %}
+{% if summary.parse_failed_count %}
+<p class="notice warn">内容を読み取れなかった通知メールが {{ summary.parse_failed_count }} 件あります。金額は計上していません。履歴の「要確認」から確認してください。</p>
+{% endif %}
+
+<section class="card">
+  <h2>Gmail同期</h2>
+  {% if conn.status in ('connected', 'error') %}
+    <p>最終同期: {{ conn.last_sync_at|jst }}{% if conn.is_mock %}(ダミーGmail){% endif %}</p>
+    {% if sync_result and not sync_result.error %}<p class="muted">{{ sync_result.message }}</p>{% endif %}
+    {% if conn.last_error %}<p class="flash flash-error">{{ conn.last_error }}<br>保存済みのデータを表示しています。</p>{% endif %}
+    {% if conn.pending_count %}<p class="muted">未取り込みの通知があと {{ conn.pending_count }} 件あります。</p>{% endif %}
+    <form method="post" action="{{ url_for('main.sync_now') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="primary">今すぐ同期</button>
+    </form>
+    <p class="muted small">ページを開いたとき、前回の同期から5分以上たっていれば自動で同期します。</p>
+  {% elif conn.status == 'expired' %}
+    <p class="flash flash-error">{{ conn.last_error or 'Gmailの認可が切れました。' }}</p>
+    <a class="button" href="{{ url_for('main.settings') }}">設定画面で再連携する</a>
+  {% else %}
+    <p>Gmailはまだ連携していません。</p>
+    <a class="button primary" href="{{ url_for('main.settings') }}">Gmailを連携する</a>
+  {% endif %}
+</section>
+{% endblock %}
