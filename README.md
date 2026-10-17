@@ -65,7 +65,7 @@ Googleの設定がなくても、**開発モード**(ダミーログイン + ダ
 
 ```bash
 python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements-dev.txt
+.venv\Scripts\python -m pip install -r requirements.txt pytest
 .venv\Scripts\python run_dev.py
 ```
 
