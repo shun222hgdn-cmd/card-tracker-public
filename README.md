@@ -7,11 +7,9 @@
 - **明細CSVの取り込み**(父・母): Vpassで毎月ダウンロードできる明細CSVをアップロードする。Gmailの許可が要らない
 
 - 自分の画面: 対象利用額(推定)、100万円までの残額、達成率、利用履歴、手動での修正
-- 家族の画面: 3人の達成額・残額・最終同期日時だけを表示(明細は本人にしか見えない)
+- 家族の画面: 3人の達成額・残額・最終更新日時だけを表示(明細は本人にしか見えない)
 
 > 表示する金額は利用通知(承認照会)をもとにした**推定値**です。特典の最終判定は三井住友カードの公式情報を優先してください。
-
----
 
 ## 技術構成
 
@@ -168,19 +166,23 @@ Gmail連携をしない家族は、Vpassの「ご利用明細」CSVを「履歴 
 3. 「OAuth同意画面」を設定する
    - ユーザーの種類: **外部**
    - スコープ: `openid`、`email`、`profile`、`https://www.googleapis.com/auth/gmail.readonly`
-   - テストユーザー: 家族3人のGmailアドレス
+   - テストユーザー: 開発中に使う自分のGmailアドレス(本番環境に切り替えた後は不要)
 4. 「認証情報」→「OAuthクライアントID」(種類: ウェブアプリケーション)を作成する
    - 承認済みのリダイレクトURI:
      - `https://<アプリ名>.vercel.app/auth/callback`
      - `https://<アプリ名>.vercel.app/gmail/callback`
-5. **本番で使い始めるとき**に、同意画面の公開ステータスを「本番環境」に切り替える
+5. 「ブランディング」でホームページ(`https://<アプリ名>.vercel.app/`)とプライバシーポリシー(`https://<アプリ名>.vercel.app/privacy`)のURLを登録する(本番環境への切り替えに必須)
+6. 同意画面の公開ステータスを「本番環境」に切り替える
    - 「テスト」のままだと、Gmailの許可が**7日で切れます**
-   - 家族だけで使う個人利用の範囲なら、審査を受けずに使えます。ただし、ログイン時に「Googleはこのアプリを確認していません」と表示されます(「詳細」→「(安全ではないページ)に移動」で進む)
+   - 家族だけで使う個人利用の範囲なら、審査を受けずに使えます。ただし、Gmailを許可するときに「Googleはこのアプリを確認していません」と表示されます(「詳細」→「(安全ではないページ)に移動」で進む)。ログインだけの人(CSVで使う家族)には表示されません
 
 ### 2. Vercel の設定
 
 1. このリポジトリをGitHubにpushし、Vercelで「Import Project」する(Framework Preset: Other)
-2. Vercelの「Storage」から **Neon(Postgres)** を追加する → `DATABASE_URL` が自動で登録される
+   - VercelはFlaskアプリとして自動認識し、すべてのURLを `api/index.py` の `app` に渡します。`vercel.json` で rewrite を書くと、パスが `/api/index` に書き換わって全ページが404になるので置かないこと
+   - `api/index.py` の `app = ...` はファイルの一番外側に書く必要があります(Vercelが静的に検出するため)
+2. Vercelの「Storage」で **Neon(Postgres)** を作成し、**「Connect Project」まで完了させる**。このとき環境変数のプレフィックスを `DATABASE` にすると `DATABASE_URL` が登録される
+   - 接続を忘れると `DATABASE_URL` がなく起動できません。DBを接続した後は再デプロイが必要です
 3. 「Settings」→「Environment Variables」に次の値を登録する
 
 | 変数 | 内容 |
@@ -191,7 +193,10 @@ Gmail連携をしない家族は、Vpassの「ご利用明細」CSVを「履歴 
 | `APP_BASE_URL` | `https://<アプリ名>.vercel.app` |
 | `ALLOWED_USERS` | `me@gmail.com:本人:admin,father@gmail.com:父,mother@gmail.com:母`(`admin` を付けた人が対象外ルールを編集できる) |
 
+   - 秘密の値(`SECRET_KEY`・`TOKEN_ENCRYPTION_KEY`・`GOOGLE_CLIENT_SECRET`)は種類を **Secret**、それ以外は **Config** にする
+   - 家族を追加・削除するときは `ALLOWED_USERS` を編集して再デプロイする
 4. 再デプロイする。初回アクセス時にテーブルと初期の対象外ルールが自動で作られます
+   - 環境変数が足りないときは、500エラーではなく「セットアップ中」のページに、足りない変数の名前が表示されます
 
 ---
 
@@ -234,5 +239,6 @@ $env:DEV_MODE="1"; $env:DATABASE_URL="postgresql://..."; $env:ALLOWED_USERS="(�
 
 | 日付 | 内容 |
 | --- | --- |
+| 2026-10-17 | 本番公開。Neonの接続漏れ・vercel.jsonのrewriteによる404を修正。環境変数不足時の案内ページを追加。Google同意画面を本番環境に切り替え(プライバシーポリシーページを追加) |
 | 2026-10-17 | 父・母はGmail連携ではなく明細CSVの取り込みに変更(Gmailの許可を家族に求めずに済むため)。CSV取込機能を追加 |
 | 2026-10-17 | 要件定義書(初版)をもとに初期実装。公開先をVercelにしたため、本番DBはPostgres(Neon)に変更。通知メールの形式をもとに解析処理を作成 |
