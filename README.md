@@ -56,7 +56,7 @@ card-tracker/
 │  ├─ templates/ static/   HTML と CSS
 ├─ tests/                  自動テスト(pytest)
 ├─ run_dev.py              ローカル起動用
-└─ vercel.json             すべてのURLを api/index.py に送る設定
+└─ api/index.py が入口(VercelがFlaskアプリとして自動で全URLを渡す)
 ```
 
 ---
