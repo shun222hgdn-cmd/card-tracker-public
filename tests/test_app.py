@@ -161,3 +161,9 @@ def test_disconnect_keeps_data(client_for):
     cl.post("/gmail/disconnect")
     assert tx_count(1) == 11
     assert db_session.get(User, 1).gmail_connection.status == "disconnected"
+
+
+def test_privacy_page_is_public(app):
+    resp = app.test_client().get("/privacy")
+    assert resp.status_code == 200
+    assert "プライバシーポリシー" in resp.get_data(as_text=True)

@@ -159,6 +159,12 @@ def callback():
     return redirect(url_for("main.home"))
 
 
+@bp.get("/privacy")
+def privacy():
+    # Googleの同意画面から参照されるため、ログインなしで見られるようにする
+    return render_template("privacy.html")
+
+
 @bp.post("/login/dev")
 def login_dev():
     if not current_app.config["APP"].dev_mode:
