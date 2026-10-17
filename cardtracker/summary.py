@@ -56,6 +56,8 @@ def compute_summary(session, user: User) -> Summary:
         last_sync_at=conn.last_sync_at if conn else None,
     )
     for tx in session.scalars(select(Transaction).where(Transaction.user_id == user.id)):
+        if tx.source == "csv" and (summary.last_sync_at is None or tx.created_at > summary.last_sync_at):
+            summary.last_sync_at = tx.created_at  # CSVで取り込んだ人は、最後に取り込んだ日時を「最終更新」とする
         if tx.parse_failed:
             summary.parse_failed_count += 1
         if tx.used_at is not None and not in_period(tx, s.period_start, s.period_end):

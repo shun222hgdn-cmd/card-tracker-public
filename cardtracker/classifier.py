@@ -50,7 +50,7 @@ def classify(tx: Transaction, rules: list[Rule], card_label_setting: str | None)
         return EXCLUDED, "取消の通知"
     if tx.cancelled:
         return EXCLUDED, "取消済み"
-    if tx.source == "gmail" and match_key(card_label_setting):
+    if tx.source in ("gmail", "csv") and match_key(card_label_setting):
         if not tx.card_label:
             return REVIEW, "カード区分を判別できません"
         if match_key(card_label_setting) not in match_key(tx.card_label):
