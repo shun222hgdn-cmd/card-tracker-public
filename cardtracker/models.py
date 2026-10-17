@@ -65,13 +65,18 @@ class CardSetting(Base):
 
 class Transaction(Base):
     __tablename__ = "transactions"
-    __table_args__ = (UniqueConstraint("user_id", "gmail_message_id", "seq", name="uq_user_message_seq"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "gmail_message_id", "seq", name="uq_user_message_seq"),
+        UniqueConstraint("user_id", "import_key", name="uq_user_import_key"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    source: Mapped[str] = mapped_column(String(10), default="gmail")  # gmail / manual
+    source: Mapped[str] = mapped_column(String(10), default="gmail")  # gmail / csv / manual
     gmail_message_id: Mapped[str | None] = mapped_column(String(64))
     seq: Mapped[int] = mapped_column(Integer, default=0)  # 1通に複数取引があるときの順番
+    # CSV取込の重複防止キー(利用日・利用先・金額・同じ内容の何件目か から作るハッシュ)
+    import_key: Mapped[str | None] = mapped_column(String(64))
 
     used_at: Mapped[datetime | None] = mapped_column(DateTime)  # 日本時間
     merchant: Mapped[str | None] = mapped_column(String(200))
@@ -103,6 +108,13 @@ class Transaction(Base):
         if self.currency == "JPY" and self.original_amount is not None:
             return int(self.original_amount)
         return None
+
+    @property
+    def used_at_label(self) -> str:
+        if self.used_at is None:
+            return "日時不明"
+        # 明細CSVには時刻がないので日付だけ表示する
+        return self.used_at.strftime("%Y/%m/%d" if self.source == "csv" else "%Y/%m/%d %H:%M")
 
     @property
     def status_label(self) -> str:

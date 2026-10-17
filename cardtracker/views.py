@@ -15,6 +15,7 @@ from sqlalchemy import select
 from .auth import admin_required, external_url, login_required, oauth
 from .classifier import apply_classification
 from .db import db_session
+from .csv_import import CsvFormatError, import_csv
 from .gmail_client import GmailClient, revoke_token
 from .mock_gmail import MockGmailClient
 from .models import (
@@ -219,6 +220,29 @@ def new_transaction():
         flash(f"登録しました(判定: {tx.status_label})。", "info")
         return redirect(url_for("main.history"))
     return render_template("new.html", form={})
+
+
+# ---------- 明細CSVの取り込み (Gmail連携をしない家族用) ----------
+
+@bp.route("/import", methods=["GET", "POST"])
+@login_required
+def import_statement():
+    if request.method == "POST":
+        file = request.files.get("csv_file")
+        if file is None or not file.filename:
+            flash("CSVファイルを選んでください。", "error")
+            return redirect(url_for("main.import_statement"))
+        try:
+            outcome = import_csv(db_session, g.user, file.read())
+        except CsvFormatError as e:
+            flash(str(e), "error")
+            return redirect(url_for("main.import_statement"))
+        msg = f"{outcome.added}件を取り込みました。"
+        if outcome.duplicates:
+            msg += f"取り込み済みの{outcome.duplicates}件は飛ばしました。"
+        flash(msg, "info")
+        return redirect(url_for("main.history"))
+    return render_template("import.html")
 
 
 # ---------- 家族一覧 (F-07) ----------

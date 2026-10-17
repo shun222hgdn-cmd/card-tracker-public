@@ -5,15 +5,15 @@
 <section class="card">
   <h1>取引の確認・修正</h1>
   <dl class="detail">
-    <div><dt>利用日時</dt><dd>{{ tx.used_at.strftime('%Y/%m/%d %H:%M') if tx.used_at else '不明' }}</dd></div>
+    <div><dt>利用日時</dt><dd>{{ tx.used_at_label }}</dd></div>
     <div><dt>利用先</dt><dd>{{ tx.merchant or '不明' }}{% if tx.usage_type %}({{ tx.usage_type }}){% endif %}</dd></div>
-    <div><dt>メール記載の金額</dt><dd>
+    <div><dt>{{ '明細CSVの金額' if tx.source == 'csv' else '元の金額' }}</dt><dd>
       {%- if tx.original_amount is none %}不明
       {%- elif tx.currency == 'JPY' %}{{ tx.original_amount|yen }}
       {%- else %}{{ '{:,.2f}'.format(tx.original_amount) }} {{ tx.currency }}{% endif -%}
     </dd></div>
     {% if tx.card_label %}<div><dt>カード</dt><dd>{{ tx.card_label }}</dd></div>{% endif %}
-    <div><dt>取得元</dt><dd>{{ 'Gmail' if tx.source == 'gmail' else '手動登録' }}</dd></div>
+    <div><dt>取得元</dt><dd>{{ {'gmail': 'Gmail(利用通知)', 'csv': '明細CSV', 'manual': '手動登録'}[tx.source] }}</dd></div>
     <div><dt>自動判定</dt><dd>{{ labels[tx.auto_status] }}{% if tx.auto_reason %}({{ tx.auto_reason }}){% endif %}</dd></div>
   </dl>
 </section>

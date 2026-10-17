@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}明細CSVの取り込み | カードトラッカー{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>明細CSVの取り込み</h1>
+  <p>Vpassでダウンロードした「ご利用明細」のCSVファイルを選んで、取り込んでください。毎月の明細が確定したら、その月の分を追加します。</p>
+  <form method="post" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>CSVファイル
+      <input type="file" name="csv_file" accept=".csv,text/csv" required>
+    </label>
+    <button type="submit" class="primary">取り込む</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>CSVのダウンロード方法</h2>
+  <ol class="small">
+    <li>Vpassアプリ、または Web版Vpass にログインする</li>
+    <li>「ご利用明細」で月を選ぶ</li>
+    <li>「明細をダウンロード(CSV)」を押して保存する</li>
+  </ol>
+  <ul class="muted small">
+    <li>同じ月のCSVを何回取り込んでも、二重には計上されません。</li>
+    <li>ファイル自体は保存しません。日付・利用先・金額だけを記録します。</li>
+    <li>返品などのマイナス金額は、合計から差し引かれます。</li>
+    <li>取り込んだ取引も「対象外ルール」で自動判定され、履歴から手動で修正できます。</li>
+  </ul>
+</section>
+{% endblock %}

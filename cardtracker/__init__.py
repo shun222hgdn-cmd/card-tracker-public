@@ -46,6 +46,7 @@ def create_app(config: Config | None = None) -> Flask:
         SESSION_COOKIE_SECURE=not (cfg.dev_mode or cfg.testing),
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         TESTING=cfg.testing,
+        MAX_CONTENT_LENGTH=2 * 1024 * 1024,  # 明細CSVのアップロード上限
     )
 
     engine = init_engine(cfg.database_url)

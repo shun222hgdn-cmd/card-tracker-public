@@ -36,7 +36,7 @@
 {% endif %}
 
 <section class="card">
-  <h2>Gmail同期</h2>
+  <h2>データの取り込み</h2>
   {% if conn.status in ('connected', 'error') %}
     <p>最終同期: {{ conn.last_sync_at|jst }}{% if conn.is_mock %}(ダミーGmail){% endif %}</p>
     {% if sync_result and not sync_result.error %}<p class="muted">{{ sync_result.message }}</p>{% endif %}
@@ -51,8 +51,11 @@
     <p class="flash flash-error">{{ conn.last_error or 'Gmailの認可が切れました。' }}</p>
     <a class="button" href="{{ url_for('main.settings') }}">設定画面で再連携する</a>
   {% else %}
-    <p>Gmailはまだ連携していません。</p>
-    <a class="button primary" href="{{ url_for('main.settings') }}">Gmailを連携する</a>
+    <p>Gmailは連携していません。毎月の明細CSVを取り込んで集計することもできます。</p>
+    <div class="button-row">
+      <a class="button primary" href="{{ url_for('main.import_statement') }}">明細CSVを取り込む</a>
+      <a class="button" href="{{ url_for('main.settings') }}">Gmailを連携する</a>
+    </div>
   {% endif %}
 </section>
 {% endblock %}
