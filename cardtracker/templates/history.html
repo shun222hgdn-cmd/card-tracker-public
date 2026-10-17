@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}利用履歴 | カードトラッカー{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>利用履歴</h1>
+  <a class="button" href="{{ url_for('main.new_transaction') }}">+ 手動で登録</a>
+</div>
+<nav class="filters" aria-label="判定で絞り込み">
+  {% for key, label in [('all', 'すべて'), ('target', '対象'), ('excluded', '対象外'), ('review', '要確認')] %}
+    <a href="{{ url_for('main.history', status=key) }}" {% if status == key %}aria-current="true"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+{% if not rows %}
+  <p class="muted">該当する取引はありません。</p>
+{% endif %}
+<ul class="tx-list">
+  {% for tx, in_range in rows %}
+  <li class="tx{% if not in_range %} out-of-range{% endif %}">
+    <a href="{{ url_for('main.edit_transaction', tx_id=tx.id, back=status) }}">
+      <span class="tx-main">
+        <span class="tx-merchant">{{ tx.merchant or '(解析できない通知)' }}{% if tx.source == 'manual' %} <small>手動登録</small>{% endif %}</span>
+        <span class="tx-date">{{ tx.used_at.strftime('%Y/%m/%d %H:%M') if tx.used_at else '日時不明' }}</span>
+        {% if tx.auto_reason and not tx.manual_override %}<span class="tx-reason">{{ tx.auto_reason }}</span>{% endif %}
+        {% if not in_range %}<span class="tx-reason">集計期間外</span>{% endif %}
+      </span>
+      <span class="tx-side">
+        <span class="tx-amount">
+          {%- if tx.corrected_amount is not none %}{{ tx.corrected_amount|yen }} <small>修正済</small>
+          {%- elif tx.original_amount is none %}-
+          {%- elif tx.currency == 'JPY' %}{{ tx.original_amount|yen }}
+          {%- else %}{{ '{:,.2f}'.format(tx.original_amount) }} {{ tx.currency }}{% endif -%}
+        </span>
+        <span class="badge badge-{{ tx.final_status }}">{{ tx.status_label }}{% if tx.manual_override %}・手動{% endif %}</span>
+      </span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}取引の確認 | カードトラッカー{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('main.history', status=request.args.get('back', 'all')) }}">← 履歴に戻る</a></p>
+<section class="card">
+  <h1>取引の確認・修正</h1>
+  <dl class="detail">
+    <div><dt>利用日時</dt><dd>{{ tx.used_at.strftime('%Y/%m/%d %H:%M') if tx.used_at else '不明' }}</dd></div>
+    <div><dt>利用先</dt><dd>{{ tx.merchant or '不明' }}{% if tx.usage_type %}({{ tx.usage_type }}){% endif %}</dd></div>
+    <div><dt>メール記載の金額</dt><dd>
+      {%- if tx.original_amount is none %}不明
+      {%- elif tx.currency == 'JPY' %}{{ tx.original_amount|yen }}
+      {%- else %}{{ '{:,.2f}'.format(tx.original_amount) }} {{ tx.currency }}{% endif -%}
+    </dd></div>
+    {% if tx.card_label %}<div><dt>カード</dt><dd>{{ tx.card_label }}</dd></div>{% endif %}
+    <div><dt>取得元</dt><dd>{{ 'Gmail' if tx.source == 'gmail' else '手動登録' }}</dd></div>
+    <div><dt>自動判定</dt><dd>{{ labels[tx.auto_status] }}{% if tx.auto_reason %}({{ tx.auto_reason }}){% endif %}</dd></div>
+  </dl>
+</section>
+
+<section class="card">
+  <form method="post" class="stack">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <fieldset class="choices">
+      <legend>判定</legend>
+      {% for key in ['target', 'excluded', 'review'] %}
+      <label class="radio"><input type="radio" name="final_status" value="{{ key }}" {% if tx.final_status == key %}checked{% endif %}> {{ labels[key] }}</label>
+      {% endfor %}
+    </fieldset>
+    <label>集計金額(円)
+      <input type="text" name="corrected_amount" inputmode="numeric"
+        value="{{ tx.corrected_amount if tx.corrected_amount is not none else '' }}"
+        placeholder="{{ tx.effective_amount if tx.effective_amount is not none else '外貨・不明の場合は円で入力' }}">
+    </label>
+    <p class="muted small">空欄ならメール記載の金額で集計します。部分返金や外貨の円換算はここで修正してください。</p>
+    <label>メモ
+      <input type="text" name="note" maxlength="500" value="{{ tx.note or '' }}">
+    </label>
+    <button type="submit" class="primary">保存する</button>
+  </form>
+  {% if tx.manual_override %}
+  <form method="post" action="{{ url_for('main.reset_transaction', tx_id=tx.id) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button type="submit" class="link-button">手動の修正を取り消して自動判定に戻す</button>
+  </form>
+  {% endif %}
+  {% if tx.source == 'manual' %}
+  <form method="post" action="{{ url_for('main.delete_transaction', tx_id=tx.id) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button type="submit" class="link-button danger">この手動登録を削除する</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

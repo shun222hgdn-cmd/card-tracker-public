@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+instance/
+*.db
+.env
+.env.*
+!.env.example
+backups/
+.vercel

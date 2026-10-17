@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}手動で登録 | カードトラッカー{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('main.history') }}">← 履歴に戻る</a></p>
+<section class="card">
+  <h1>通知が届かなかった取引を登録</h1>
+  <form method="post" class="stack">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>利用日 <input type="date" name="date" required value="{{ form.get('date', '') }}"></label>
+    <label>時刻(任意) <input type="time" name="time" value="{{ form.get('time', '') }}"></label>
+    <label>利用先 <input type="text" name="merchant" required maxlength="200" value="{{ form.get('merchant', '') }}"></label>
+    <label>金額(円) <input type="text" name="amount" inputmode="numeric" required value="{{ form.get('amount', '') }}"></label>
+    <button type="submit" class="primary">登録する</button>
+  </form>
+  <p class="muted small">手動登録した取引は、メールから取り込んだ取引と区別して保存されます。</p>
+</section>
+{% endblock %}

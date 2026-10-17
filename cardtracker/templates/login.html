@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}ログイン | カードトラッカー{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>カードトラッカー</h1>
+  <p>家族3人の三井住友カード(NL)の年間利用額(推定)を管理します。登録済みのGoogleアカウントだけが利用できます。</p>
+  {% if google_ready %}
+  <form method="post" action="{{ url_for('auth.login_google') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button type="submit" class="primary wide">Googleでログイン</button>
+  </form>
+  {% endif %}
+  {% if dev_users %}
+  <h2>開発用ログイン</h2>
+  <p class="muted small">DEV_MODE=1 のローカル環境だけで表示されます。</p>
+  <div class="button-row">
+  {% for u in dev_users %}
+  <form method="post" action="{{ url_for('auth.login_dev') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="user_id" value="{{ u.id }}">
+    <button type="submit">{{ u.display_name }}としてログイン</button>
+  </form>
+  {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
