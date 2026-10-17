@@ -9,3 +9,7 @@ instance/
 !.env.example
 backups/
 .vercel
+
+# エディタのロックファイル・一時ファイル
+~$*
+*.tmp
