@@ -11,12 +11,31 @@ from .conftest import SAMPLE_CSV, SAMPLE_TOTAL
 
 
 def test_parse_rows_and_card_label():
-    card_label, rows = parse_csv(SAMPLE_CSV)
-    assert card_label == "三井住友カード(NL)"
-    assert [(m, a) for _, m, a in rows][:2] == [("セブン-イレブン", 648), ("AMAZON.CO.JP", 12800)]
+    rows = parse_csv(SAMPLE_CSV)
+    assert [(m, a) for _, m, a, _ in rows][:2] == [("セブン-イレブン", 648), ("AMAZON.CO.JP", 12800)]
     assert rows[0][0] == datetime(2026, 9, 1)
+    assert rows[0][3] == "三井住友カード(NL)"
     assert rows[3][2] == -1990
     assert len(rows) == 5  # 見出し行と合計行は読まない
+
+
+# 公開されている実際のVpass明細CSVの例(vpass-csv-parser のREADMEより。名前は伏せ字)
+REAL_FORMAT_CSV = (
+    "〇〇　〇〇　様,4980-11**-****-****,三井住友カードプラチナプリファード\r\n"
+    "2023/04/13,ＥＴＣ首都高,390,,,,自神田橋外　　至台場　　　　軽・二\r\n"
+    "2023/04/30,GITHUB, INC. (HTTPSGITHUB.C),1394,,,,10.00　USD　139.488　05 01\r\n"
+    "〇〇　〇〇　様,6900-11**-****-****,ＡｐｐｌｅＰａｙ／ｉＤ\r\n"
+    "2023/04/27,飲料自販機／ｉＤ,120,,,,\r\n"
+)
+
+
+def test_real_format_comma_in_merchant_and_multiple_cards():
+    rows = parse_csv(REAL_FORMAT_CSV)
+    assert [(m, a, c) for _, m, a, c in rows] == [
+        ("ETC首都高", 390, "三井住友カードプラチナプリファード"),
+        ("GITHUB, INC. (HTTPSGITHUB.C)", 1394, "三井住友カードプラチナプリファード"),  # カンマ入りでも落ちない
+        ("飲料自販機/iD", 120, "ApplePay/iD"),  # 2つ目の見出し行のカード名が付く
+    ]
 
 
 def test_decode_shift_jis_and_utf8():
