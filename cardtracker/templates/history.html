@@ -3,10 +3,7 @@
 {% block content %}
 <div class="page-head">
   <h1>利用履歴</h1>
-  <div class="button-row">
-    <a class="button" href="{{ url_for('main.import_statement') }}">CSV取込</a>
-    <a class="button" href="{{ url_for('main.new_transaction') }}">+ 手動で登録</a>
-  </div>
+  <a class="button" href="{{ url_for('main.import_statement') }}">CSV取込</a>
 </div>
 <nav class="filters" aria-label="判定で絞り込み">
   {% for key, label in [('all', 'すべて'), ('target', '対象'), ('excluded', '対象外'), ('review', '要確認')] %}
@@ -19,7 +16,7 @@
   <li class="tx{% if not in_range %} out-of-range{% endif %}">
     <a href="{{ url_for('main.edit_transaction', tx_id=tx.id, back=status) }}">
       <span class="tx-main">
-        <span class="tx-merchant">{{ tx.merchant }} <small>{{ 'CSV' if tx.source == 'csv' else '手動登録' }}</small></span>
+        <span class="tx-merchant">{{ tx.merchant }}</span>
         <span class="tx-date">{{ tx.used_at_label }}</span>
         {% if tx.auto_reason and not tx.manual_override %}<span class="tx-reason">{{ tx.auto_reason }}</span>{% endif %}
         {% if not in_range %}<span class="tx-reason">集計期間外</span>{% endif %}

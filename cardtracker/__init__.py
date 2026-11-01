@@ -6,7 +6,7 @@ from datetime import timedelta, timezone
 from flask import Flask, g, render_template
 from sqlalchemy import select
 
-from . import auth, cli, views
+from . import auth, views
 from .config import Config
 from .db import create_tables, db_session, init_engine
 from .models import ExclusionRule
@@ -62,7 +62,6 @@ def create_app(config: Config | None = None) -> Flask:
     auth.init_oauth(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(views.bp)
-    cli.register(app)
 
     app.before_request(check_csrf)
     app.before_request(auth.load_current_user)

@@ -33,7 +33,7 @@ def test_login_required(app):
 
 def test_csrf_required(client_for):
     cl = client_for(1)
-    assert cl.c.post("/transactions/new", data={}).status_code == 400
+    assert cl.c.post("/import", data={}).status_code == 400
 
 
 def test_home_shows_total(client_for):
@@ -122,19 +122,6 @@ def test_non_admin_cannot_change_rules(client_for):
     assert dad.post("/rules", keyword="X").status_code == 403
 
 
-def test_manual_registration(client_for):
-    cl = client_for(2)
-    cl.post("/transactions/new", date="2026-10-01", time="12:00", merchant="近所の店", amount="3,000")
-    t = find_tx(2, "近所の店")
-    assert (t.source, t.final_status, t.effective_amount) == ("manual", TARGET, 3000)
-
-
-def test_csv_rows_cannot_be_deleted(client_for):
-    cl = client_for(1)
-    cl.upload()
-    assert cl.post(f"/transactions/{find_tx(1, 'AMAZON.CO.JP').id}/delete").status_code == 400
-
-
 def test_removed_account_is_logged_out(app, client_for):
     cl = client_for(3)
     app.config["APP"].allowed_users = [u for u in app.config["APP"].allowed_users if u.email != "mother@example.com"]
@@ -145,7 +132,9 @@ def test_removed_account_is_logged_out(app, client_for):
 def test_privacy_page_is_public(app):
     resp = app.test_client().get("/privacy")
     assert resp.status_code == 200
-    assert "プライバシーポリシー" in resp.get_data(as_text=True)
+    html = resp.get_data(as_text=True)
+    assert "プライバシーポリシー" in html
+    assert "me@example.com" in html  # 連絡先は管理者のメールアドレス
 
 
 def test_rule_toggle_and_delete(client_for):
@@ -176,7 +165,7 @@ def test_reset_requires_confirmation(client_for):
 def test_reset_month_only_deletes_that_month(client_for):
     cl = client_for(1)
     cl.upload()
-    cl.post("/transactions/new", date="2026-10-01", merchant="10月の店", amount="1000")
+    cl.upload("〇〇 様,,カード\r\n2026/10/01,10月の店,1000,,,,\r\n")
     cl.post("/settings/reset", month="2026-09", confirm="1")
     assert tx_count(1) == 1  # 9月の5件だけ消え、10月の1件は残る
     assert find_tx(1, "10月の店") is not None

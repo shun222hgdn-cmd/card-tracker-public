@@ -12,7 +12,7 @@
     <a class="brand" href="{{ url_for('main.home') }}">カードトラッカー</a>
     <nav>
       <a href="{{ url_for('main.home') }}" {% if request.endpoint == 'main.home' %}aria-current="page"{% endif %}>ホーム</a>
-      <a href="{{ url_for('main.history') }}" {% if request.endpoint in ('main.history', 'main.edit_transaction', 'main.new_transaction') %}aria-current="page"{% endif %}>履歴</a>
+      <a href="{{ url_for('main.history') }}" {% if request.endpoint in ('main.history', 'main.edit_transaction') %}aria-current="page"{% endif %}>履歴</a>
       <a href="{{ url_for('main.family') }}" {% if request.endpoint == 'main.family' %}aria-current="page"{% endif %}>家族</a>
       <a href="{{ url_for('main.settings') }}" {% if request.endpoint == 'main.settings' %}aria-current="page"{% endif %}>設定</a>
     </nav>
