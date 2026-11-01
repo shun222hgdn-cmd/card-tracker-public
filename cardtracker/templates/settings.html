@@ -12,45 +12,20 @@
     <label>対象カード名(任意)
       <input type="text" name="card_label" maxlength="100" value="{{ setting.card_label or '' }}" placeholder="例: NL">
     </label>
-    <p class="muted small">通知メールの「◯◯についてカードの利用内容をお知らせします」の◯◯にこの文字が含まれない取引は「対象外」になります。三井住友のカードを1枚しか使っていなければ空欄で構いません。</p>
+    <p class="muted small">明細CSVの1行目にあるカード名に、この文字が含まれない明細は「対象外」になります。三井住友のカードを1枚しか使っていなければ空欄で構いません。</p>
     <button type="submit" class="primary">保存する</button>
   </form>
 </section>
 
 <section class="card">
-  <h2>Gmail連携</h2>
-  {% if conn.status in ('connected', 'error') %}
-    <p>連携中{% if conn.is_mock %}(ダミーGmail){% endif %} / 最終同期: {{ conn.last_sync_at|jst }}</p>
-    <form method="post" action="{{ url_for('main.gmail_disconnect') }}">
-      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <button type="submit">連携を解除する</button>
-    </form>
-    <p class="muted small">解除するとGoogle側の許可も取り消します。取り込み済みの取引と集計は残ります。</p>
-  {% else %}
-    {% if conn.status == 'expired' %}<p class="flash flash-error">{{ conn.last_error or 'Gmailの認可が切れました。' }}</p>{% endif %}
-    <p>三井住友カードの利用通知メール(statement@vpass.ne.jp)だけを読み取ります。メール本文は保存せず、日時・利用先・金額などだけを記録します。</p>
-    <form method="post" action="{{ url_for('main.gmail_connect') }}">
-      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <button type="submit" class="primary">{{ 'Gmailを再連携する' if conn.status == 'expired' else 'Gmailを連携する' }}</button>
-    </form>
-  {% endif %}
-  <form method="post" action="{{ url_for('main.confirm_vpass') }}" class="inline-check">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <input type="hidden" name="confirmed" value="{{ '0' if setting.vpass_notice_confirmed else '1' }}">
-    <span>Vpassのメール通知設定: {{ '確認済み' if setting.vpass_notice_confirmed else '未確認' }}</span>
-    <button type="submit" class="link-button">{{ '未確認に戻す' if setting.vpass_notice_confirmed else '確認済みにする' }}</button>
-  </form>
-</section>
-
-<section class="card">
   <h2>対象外ルール(家族共通)</h2>
-  <p class="muted small">利用先などにキーワードを含む取引を「対象外」にします。全角・半角や大文字・小文字の違いは区別しません。{% if not current_user.is_admin %}変更できるのは管理者だけです。{% endif %}</p>
+  <p class="muted small">利用先にキーワードを含む取引を「対象外」にします。全角・半角や大文字・小文字の違いは区別しません。{% if not current_user.is_admin %}変更できるのは管理者だけです。{% endif %}</p>
   <ul class="rules">
     {% for rule in rules %}
     <li{% if not rule.enabled %} class="disabled"{% endif %}>
       <span class="rule-text">
         <span class="rule-keyword">{{ rule.keyword }}</span>
-        <span class="muted small">{{ {'merchant': '利用先', 'usage': '利用区分', 'all': '利用先・区分'}[rule.applies_to] }}{% if rule.memo %} / {{ rule.memo }}{% endif %}{% if not rule.enabled %} / 無効{% endif %}</span>
+        {% if rule.memo or not rule.enabled %}<span class="muted small">{{ rule.memo or '' }}{% if not rule.enabled %}{{ ' / ' if rule.memo }}無効{% endif %}</span>{% endif %}
       </span>
       {% if current_user.is_admin %}
       <span class="rule-actions">
@@ -71,13 +46,6 @@
   <form method="post" action="{{ url_for('main.add_rule') }}" class="stack">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <label>キーワード <input type="text" name="keyword" required maxlength="100"></label>
-    <label>適用対象
-      <select name="applies_to">
-        <option value="merchant">利用先</option>
-        <option value="usage">利用区分(「買物」など)</option>
-        <option value="all">両方</option>
-      </select>
-    </label>
     <label>メモ(任意) <input type="text" name="memo" maxlength="200"></label>
     <button type="submit">ルールを追加</button>
   </form>

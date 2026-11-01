@@ -2,7 +2,6 @@
 
     flask --app cardtracker backup backups/2026-10-17.json
     flask --app cardtracker restore backups/2026-10-17.json
-    flask --app cardtracker gen-key
 """
 from __future__ import annotations
 
@@ -17,7 +16,7 @@ from sqlalchemy import Date, DateTime, Numeric, delete, insert, select
 from .db import Base, db_session
 
 # 復元時は親テーブルから順に入れる
-TABLE_ORDER = ["users", "card_settings", "gmail_connections", "exclusion_rules", "transactions"]
+TABLE_ORDER = ["users", "card_settings", "exclusion_rules", "transactions"]
 
 
 def _encode(value):
@@ -44,7 +43,7 @@ def register(app) -> None:
     @app.cli.command("backup")
     @click.argument("path")
     def backup(path):
-        """全テーブルをJSONに書き出す。暗号化済みトークンもそのまま含むので、ファイルの扱いに注意。"""
+        """全テーブルをJSONに書き出す。家族の明細を含むので、ファイルの扱いに注意。"""
         tables = Base.metadata.tables
         data = {
             name: [
@@ -75,9 +74,3 @@ def register(app) -> None:
         db_session.commit()
         click.echo("復元しました。Postgresの場合は、IDの連番がずれないよう README の手順で調整してください。")
 
-    @app.cli.command("gen-key")
-    def gen_key():
-        """TOKEN_ENCRYPTION_KEY 用の鍵を生成する。"""
-        from cryptography.fernet import Fernet
-
-        click.echo(Fernet.generate_key().decode())

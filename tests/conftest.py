@@ -1,9 +1,24 @@
+from io import BytesIO
+
 import pytest
 
 from cardtracker import create_app
 from cardtracker.config import DEV_DEFAULT_USERS, Config, parse_allowed_users
 
 CSRF = "test-csrf-token"
+
+# Vpassの明細CSVを模したサンプル(Shift_JISで送る)
+SAMPLE_CSV = (
+    "〇〇 様,4980-00**-****-****,三井住友カード（ＮＬ）\r\n"
+    "2026/09/01,セブン－イレブン,648,１,１,648,\r\n"
+    "2026/09/03,ＡＭＡＺＯＮ．ＣＯ．ＪＰ,\"12,800\",１,１,12800,\r\n"
+    "2026/09/05,モバイルＳｕｉｃａ,5000,１,１,5000,\r\n"
+    "2026/09/10,ユニクロ,-1990,１,１,-1990,返品\r\n"
+    "2026/09/12,セブン－イレブン,648,１,１,648,\r\n"
+    ",,,,,17106,\r\n"
+)
+# 648 + 12800 - 1990 + 648 (Suicaは対象外ルールで除外)
+SAMPLE_TOTAL = 12106
 
 
 @pytest.fixture
@@ -40,6 +55,13 @@ class Client:
     def post(self, url, **data):
         data.setdefault("_csrf", CSRF)
         return self.c.post(url, data=data)
+
+    def upload(self, text=SAMPLE_CSV, encoding="cp932", name="meisai.csv"):
+        return self.c.post(
+            "/import",
+            data={"_csrf": CSRF, "csv_file": (BytesIO(text.encode(encoding)), name)},
+            content_type="multipart/form-data",
+        )
 
 
 @pytest.fixture

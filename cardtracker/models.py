@@ -43,7 +43,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     card_setting: Mapped["CardSetting"] = relationship(back_populates="user", uselist=False)
-    gmail_connection: Mapped["GmailConnection"] = relationship(back_populates="user", uselist=False)
 
 
 class CardSetting(Base):
@@ -55,41 +54,28 @@ class CardSetting(Base):
     period_end: Mapped[date] = mapped_column(Date)
     # 本人が期間を確認・保存したか(未設定のあいだはホームで案内する)
     period_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
-    # 通知メールの「◯◯についてカードの利用内容をお知らせします」の◯◯に含まれるべき文字列。
-    # 空なら全カードを集計する。別カードの通知を除外したいときに使う。
+    # 明細CSVの見出し行にあるカード名に含まれるべき文字列。
+    # 空なら全カードを集計する。別カードの明細を除外したいときに使う。
     card_label: Mapped[str | None] = mapped_column(String(100))
-    vpass_notice_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped[User] = relationship(back_populates="card_setting")
 
 
 class Transaction(Base):
     __tablename__ = "transactions"
-    __table_args__ = (
-        UniqueConstraint("user_id", "gmail_message_id", "seq", name="uq_user_message_seq"),
-        UniqueConstraint("user_id", "import_key", name="uq_user_import_key"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "import_key", name="uq_user_import_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    source: Mapped[str] = mapped_column(String(10), default="gmail")  # gmail / csv / manual
-    gmail_message_id: Mapped[str | None] = mapped_column(String(64))
-    seq: Mapped[int] = mapped_column(Integer, default=0)  # 1通に複数取引があるときの順番
+    source: Mapped[str] = mapped_column(String(10), default="csv")  # csv / manual
     # CSV取込の重複防止キー(利用日・利用先・金額・同じ内容の何件目か から作るハッシュ)
     import_key: Mapped[str | None] = mapped_column(String(64))
 
     used_at: Mapped[datetime | None] = mapped_column(DateTime)  # 日本時間
     merchant: Mapped[str | None] = mapped_column(String(200))
-    usage_type: Mapped[str | None] = mapped_column(String(50))  # 「買物」など
     card_label: Mapped[str | None] = mapped_column(String(100))
-    original_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))  # メール記載の金額
-    currency: Mapped[str | None] = mapped_column(String(3))
+    original_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))  # 明細CSV(または手動登録)の円金額
     corrected_amount: Mapped[int | None] = mapped_column(Integer)  # 本人が修正した円金額
-
-    is_cancel: Mapped[bool] = mapped_column(Boolean, default=False)   # 取消の通知そのもの
-    cancelled: Mapped[bool] = mapped_column(Boolean, default=False)   # 後から取消された元取引
-    parse_failed: Mapped[bool] = mapped_column(Boolean, default=False)
-    duplicate_suspect: Mapped[bool] = mapped_column(Boolean, default=False)
 
     auto_status: Mapped[str] = mapped_column(String(10), default=REVIEW)
     auto_reason: Mapped[str] = mapped_column(String(200), default="")
@@ -102,10 +88,10 @@ class Transaction(Base):
 
     @property
     def effective_amount(self) -> int | None:
-        """集計に使う円金額。修正額があればそれを優先し、外貨は修正額がない限り計上しない。"""
+        """集計に使う円金額。修正額があればそれを優先する。"""
         if self.corrected_amount is not None:
             return self.corrected_amount
-        if self.currency == "JPY" and self.original_amount is not None:
+        if self.original_amount is not None:
             return int(self.original_amount)
         return None
 
@@ -125,25 +111,8 @@ class ExclusionRule(Base):
     __tablename__ = "exclusion_rules"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    keyword: Mapped[str] = mapped_column(String(100))
-    # merchant: 利用先 / usage: 利用区分(「買物」など) / all: 両方
-    applies_to: Mapped[str] = mapped_column(String(10), default="merchant")
+    keyword: Mapped[str] = mapped_column(String(100))  # 利用先にこの文字を含む取引を対象外にする
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     memo: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
-
-class GmailConnection(Base):
-    __tablename__ = "gmail_connections"
-
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    # connected / error / expired / disconnected
-    status: Mapped[str] = mapped_column(String(20), default="disconnected")
-    is_mock: Mapped[bool] = mapped_column(Boolean, default=False)
-    refresh_token_enc: Mapped[str | None] = mapped_column(Text)  # 暗号化済み
-    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime)          # 最後に成功した同期(UTC)
-    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime)       # 最後に試した同期(UTC)
-    last_error: Mapped[str | None] = mapped_column(Text)
-    pending_count: Mapped[int] = mapped_column(Integer, default=0)  # 1回で取り切れなかった件数
-
-    user: Mapped[User] = relationship(back_populates="gmail_connection")

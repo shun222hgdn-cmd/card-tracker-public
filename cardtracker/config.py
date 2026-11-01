@@ -42,16 +42,13 @@ class Config:
     allowed_users: list[AllowedUser] = field(default_factory=list)
     google_client_id: str = ""
     google_client_secret: str = ""
-    token_encryption_key: str = ""
     base_url: str = ""
-    sync_interval_minutes: int = 5
-    max_messages_per_sync: int = 50
     testing: bool = False
 
     @classmethod
     def from_env(cls) -> "Config":
         on_vercel = bool(os.environ.get("VERCEL"))
-        # 開発用モック(ダミーログイン・ダミーGmail)は、Vercel上では絶対に有効にしない
+        # 開発用のダミーログインは、Vercel上では絶対に有効にしない
         dev_mode = os.environ.get("DEV_MODE") == "1" and not on_vercel
 
         database_url = os.environ.get("DATABASE_URL", "")
@@ -74,7 +71,6 @@ class Config:
             allowed_users=parse_allowed_users(raw_users),
             google_client_id=os.environ.get("GOOGLE_CLIENT_ID", ""),
             google_client_secret=os.environ.get("GOOGLE_CLIENT_SECRET", ""),
-            token_encryption_key=os.environ.get("TOKEN_ENCRYPTION_KEY", ""),
             base_url=os.environ.get("APP_BASE_URL", "").rstrip("/"),
         )
         cfg.validate()
@@ -89,7 +85,6 @@ class Config:
                 ("SECRET_KEY", self.secret_key),
                 ("GOOGLE_CLIENT_ID", self.google_client_id),
                 ("GOOGLE_CLIENT_SECRET", self.google_client_secret),
-                ("TOKEN_ENCRYPTION_KEY", self.token_encryption_key),
                 ("ALLOWED_USERS", self.allowed_users),
             ]
             if not value

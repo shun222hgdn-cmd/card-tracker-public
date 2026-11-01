@@ -20,9 +20,8 @@ class Summary:
     total: int
     period_start: date
     period_end: date
-    last_sync_at: datetime | None
+    last_updated_at: datetime | None = None  # 最後にCSVを取り込んだ(取引を登録した)日時(UTC)
     review_count: int = 0
-    parse_failed_count: int = 0
 
     @property
     def remaining(self) -> int:
@@ -45,7 +44,6 @@ def in_period(tx: Transaction, start: date, end: date) -> bool:
 
 def compute_summary(session, user: User) -> Summary:
     s = user.card_setting
-    conn = user.gmail_connection
     summary = Summary(
         user_id=user.id,
         display_name=user.display_name,
@@ -53,13 +51,10 @@ def compute_summary(session, user: User) -> Summary:
         total=0,
         period_start=s.period_start,
         period_end=s.period_end,
-        last_sync_at=conn.last_sync_at if conn else None,
     )
     for tx in session.scalars(select(Transaction).where(Transaction.user_id == user.id)):
-        if tx.source == "csv" and (summary.last_sync_at is None or tx.created_at > summary.last_sync_at):
-            summary.last_sync_at = tx.created_at  # CSVで取り込んだ人は、最後に取り込んだ日時を「最終更新」とする
-        if tx.parse_failed:
-            summary.parse_failed_count += 1
+        if summary.last_updated_at is None or tx.created_at > summary.last_updated_at:
+            summary.last_updated_at = tx.created_at
         if tx.used_at is not None and not in_period(tx, s.period_start, s.period_end):
             continue
         if tx.final_status == TARGET and tx.effective_amount is not None:
