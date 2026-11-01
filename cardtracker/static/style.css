@@ -56,12 +56,10 @@ form { margin: 0; }
 input[type="text"], input[type="date"], input[type="time"], select { font: inherit; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); width: 100%; background: var(--surface); color: var(--text); }
 .choices { border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .radio { display: inline-flex !important; align-items: center; gap: 6px; font-size: 1rem !important; }
-.inline-check { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.9rem; }
 
 .flash, .notice { padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); margin: 0 0 16px; }
 .flash-error { border-color: var(--danger); color: var(--danger); }
 .notice.warn { border-color: var(--warn); }
-.notice p { margin: 0 0 8px; }
 .dev-badge { font-size: 0.8rem; color: var(--warn); margin: 0 0 8px; }
 
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
