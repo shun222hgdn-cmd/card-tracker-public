@@ -3,7 +3,7 @@
 {% block content %}
 <section class="card narrow">
   <h1>{{ error.code }}</h1>
-  <p>{{ error.description if error.code == 400 else {403: 'この操作は許可されていません。', 404: 'ページが見つかりません。'}[error.code] }}</p>
+  <p>{{ {403: 'この操作は許可されていません。', 404: 'ページが見つかりません。', 413: 'ファイルが大きすぎます(2MBまで)。'}.get(error.code, error.description) }}</p>
   <p><a href="{{ url_for('main.home') }}">ホームへ戻る</a></p>
 </section>
 {% endblock %}

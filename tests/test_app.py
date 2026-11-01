@@ -146,3 +146,16 @@ def test_privacy_page_is_public(app):
     resp = app.test_client().get("/privacy")
     assert resp.status_code == 200
     assert "プライバシーポリシー" in resp.get_data(as_text=True)
+
+
+def test_rule_toggle_and_delete(client_for):
+    from cardtracker.models import ExclusionRule
+
+    cl = client_for(1)
+    cl.upload()
+    suica = db_session.scalar(select(ExclusionRule).where(ExclusionRule.keyword == "SUICA"))
+    cl.post(f"/rules/{suica.id}/toggle")
+    assert find_tx(1, "モバイルSuica").final_status == TARGET
+    cl.post(f"/rules/{suica.id}/delete")
+    db_session.remove()
+    assert db_session.get(ExclusionRule, suica.id) is None

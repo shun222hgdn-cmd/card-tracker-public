@@ -11,12 +11,12 @@ from .conftest import SAMPLE_CSV, SAMPLE_TOTAL
 
 
 def test_parse_rows_and_card_label():
-    r = parse_csv(SAMPLE_CSV)
-    assert r.card_label == "三井住友カード(NL)"
-    assert [(x.merchant, x.amount) for x in r.rows][:2] == [("セブン-イレブン", 648), ("AMAZON.CO.JP", 12800)]
-    assert r.rows[0].used_at == datetime(2026, 9, 1)
-    assert r.rows[3].amount == -1990
-    assert r.skipped == 1  # 合計行
+    card_label, rows = parse_csv(SAMPLE_CSV)
+    assert card_label == "三井住友カード(NL)"
+    assert [(m, a) for _, m, a in rows][:2] == [("セブン-イレブン", 648), ("AMAZON.CO.JP", 12800)]
+    assert rows[0][0] == datetime(2026, 9, 1)
+    assert rows[3][2] == -1990
+    assert len(rows) == 5  # 見出し行と合計行は読まない
 
 
 def test_decode_shift_jis_and_utf8():

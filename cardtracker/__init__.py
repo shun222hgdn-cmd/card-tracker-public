@@ -10,28 +10,24 @@ from . import auth, cli, views
 from .config import Config
 from .db import create_tables, db_session, init_engine
 from .models import ExclusionRule
-from .security import check_csrf, csrf_token
+from .security import check_csrf, csrf_field
 
 JST = timezone(timedelta(hours=9))
 
-# 初期の対象外キーワード(仮)。三井住友カードの公式条件と実際の通知表記を照合して、設定画面から調整する。
-DEFAULT_RULES = [
-    ("年会費", "年会費"),
-    ("キャッシング", "キャッシング"),
-    ("SUICA", "電子マネーチャージ"),
-    ("PASMO", "電子マネーチャージ"),
-    ("ICOCA", "電子マネーチャージ"),
-    ("WAON", "電子マネーチャージ"),
-    ("NANACO", "電子マネーチャージ"),
-    ("EDY", "電子マネーチャージ"),
-    ("SBI証券", "クレカ積立"),
-    ("国民年金", "国民年金保険料"),
-]
+# 初期の対象外キーワード(仮)。三井住友カードの公式条件と明細の表記を照合して、設定画面から調整する。
+DEFAULT_RULES = {
+    "年会費": ["年会費"],
+    "キャッシング": ["キャッシング"],
+    "電子マネーチャージ": ["SUICA", "PASMO", "ICOCA", "WAON", "NANACO", "EDY"],
+    "クレカ積立": ["SBI証券"],
+    "国民年金保険料": ["国民年金"],
+}
 
 
 def seed_rules(sess) -> None:
     if sess.scalar(select(ExclusionRule.id).limit(1)) is None:
-        sess.add_all(ExclusionRule(keyword=k, memo=f"初期値(仮): {m}") for k, m in DEFAULT_RULES)
+        sess.add_all(ExclusionRule(keyword=k, memo=f"初期値(仮): {memo}")
+                     for memo, keywords in DEFAULT_RULES.items() for k in keywords)
         sess.commit()
 
 
@@ -81,18 +77,17 @@ def create_app(config: Config | None = None) -> Flask:
 
     @app.context_processor
     def inject():
-        return {"csrf_token": csrf_token, "current_user": g.get("user"), "dev_mode": cfg.dev_mode}
+        return {"csrf_field": csrf_field, "current_user": g.get("user"), "dev_mode": cfg.dev_mode}
 
     @app.template_filter("jst")
-    def jst(value, fmt="%Y/%m/%d %H:%M"):
+    def jst(value):
         """DBのUTC時刻を日本時間で表示する。"""
-        if value is None:
-            return "未取込"
-        return value.replace(tzinfo=timezone.utc).astimezone(JST).strftime(fmt)
+        return value.replace(tzinfo=timezone.utc).astimezone(JST).strftime("%Y/%m/%d %H:%M") if value else "未取込"
 
     @app.errorhandler(400)
     @app.errorhandler(403)
     @app.errorhandler(404)
+    @app.errorhandler(413)
     def error_page(err):
         return render_template("error.html", error=err), err.code
 

@@ -6,7 +6,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+LOCAL_DB = f"sqlite:///{Path(__file__).resolve().parent.parent / 'instance' / 'card_tracker.db'}"
+DEV_DEFAULT_USERS = "me@example.com:本人:admin,father@example.com:父,mother@example.com:母"
 
 
 @dataclass
@@ -19,19 +20,10 @@ class AllowedUser:
 def parse_allowed_users(raw: str) -> list[AllowedUser]:
     """ALLOWED_USERS="me@gmail.com:本人:admin,dad@gmail.com:父,mom@gmail.com:母" を解釈する。"""
     users = []
-    for item in raw.split(","):
-        item = item.strip()
-        if not item:
-            continue
-        parts = [p.strip() for p in item.split(":")]
-        email = parts[0].lower()
-        name = parts[1] if len(parts) > 1 and parts[1] else email
-        is_admin = len(parts) > 2 and parts[2].lower() == "admin"
-        users.append(AllowedUser(email=email, display_name=name, is_admin=is_admin))
+    for item in filter(None, (s.strip() for s in raw.split(","))):
+        email, name, role = (item.split(":") + ["", ""])[:3]
+        users.append(AllowedUser(email.strip().lower(), name.strip() or email.strip(), role.strip() == "admin"))
     return users
-
-
-DEV_DEFAULT_USERS = "me@example.com:本人:admin,father@example.com:父,mother@example.com:母"
 
 
 @dataclass
@@ -47,47 +39,32 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
-        on_vercel = bool(os.environ.get("VERCEL"))
+        env = os.environ.get
+        on_vercel = bool(env("VERCEL"))
         # 開発用のダミーログインは、Vercel上では絶対に有効にしない
-        dev_mode = os.environ.get("DEV_MODE") == "1" and not on_vercel
-
-        database_url = os.environ.get("DATABASE_URL", "")
-        use_local_db = not database_url
-        if not database_url:
-            if on_vercel:
-                # Vercelのファイルは消えるため、SQLiteで動かすとデータを失う。起動を止めて気付かせる。
-                raise RuntimeError("Vercelでは DATABASE_URL (Postgres) の設定が必須です")
-            database_url = f"sqlite:///{PROJECT_ROOT / 'instance' / 'card_tracker.db'}"
-
-        raw_users = os.environ.get("ALLOWED_USERS", "")
+        dev_mode = env("DEV_MODE") == "1" and not on_vercel
+        if on_vercel and not env("DATABASE_URL"):
+            # Vercelのファイルは消えるため、SQLiteで動かすとデータを失う。起動を止めて気付かせる。
+            raise RuntimeError("Vercelでは DATABASE_URL (Postgres) の設定が必須です")
         # ダミーの3人を作るのはローカルDBのときだけ(本番DBに接続した管理コマンドで混ざらないように)
-        if not raw_users and dev_mode and use_local_db:
-            raw_users = DEV_DEFAULT_USERS
+        default_users = DEV_DEFAULT_USERS if dev_mode and not env("DATABASE_URL") else ""
 
         cfg = cls(
-            secret_key=os.environ.get("SECRET_KEY", "dev-secret-key" if dev_mode else ""),
-            database_url=database_url,
+            secret_key=env("SECRET_KEY", "dev-secret-key" if dev_mode else ""),
+            database_url=env("DATABASE_URL") or LOCAL_DB,
             dev_mode=dev_mode,
-            allowed_users=parse_allowed_users(raw_users),
-            google_client_id=os.environ.get("GOOGLE_CLIENT_ID", ""),
-            google_client_secret=os.environ.get("GOOGLE_CLIENT_SECRET", ""),
-            base_url=os.environ.get("APP_BASE_URL", "").rstrip("/"),
+            allowed_users=parse_allowed_users(env("ALLOWED_USERS") or default_users),
+            google_client_id=env("GOOGLE_CLIENT_ID", ""),
+            google_client_secret=env("GOOGLE_CLIENT_SECRET", ""),
+            base_url=env("APP_BASE_URL", "").rstrip("/"),
         )
-        cfg.validate()
-        return cfg
-
-    def validate(self) -> None:
-        if self.dev_mode or self.testing:
-            return
-        missing = [
-            name
-            for name, value in [
-                ("SECRET_KEY", self.secret_key),
-                ("GOOGLE_CLIENT_ID", self.google_client_id),
-                ("GOOGLE_CLIENT_SECRET", self.google_client_secret),
-                ("ALLOWED_USERS", self.allowed_users),
-            ]
-            if not value
-        ]
-        if missing:
+        required = {
+            "SECRET_KEY": cfg.secret_key,
+            "GOOGLE_CLIENT_ID": cfg.google_client_id,
+            "GOOGLE_CLIENT_SECRET": cfg.google_client_secret,
+            "ALLOWED_USERS": cfg.allowed_users,
+        }
+        missing = [name for name, value in required.items() if not value]
+        if missing and not dev_mode:
             raise RuntimeError("環境変数が未設定です: " + ", ".join(missing))
+        return cfg

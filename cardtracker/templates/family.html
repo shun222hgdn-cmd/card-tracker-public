@@ -4,15 +4,15 @@
 <h1>家族の達成状況</h1>
 <p class="muted">各自が最後に明細CSVを取り込んだ時点の推定額です。明細は本人以外には表示されません。</p>
 <div class="family">
-  {% for row in rows %}
+  {% for s in summaries %}
   <section class="card">
-    <h2>{{ row.name }}{% if row.is_me %} <small>(あなた)</small>{% endif %}</h2>
-    <p class="big">{{ row.total|yen }}</p>
-    <progress value="{{ row.rate_capped }}" max="100">{{ '%.1f'|format(row.rate) }}%</progress>
+    <h2>{{ s.display_name }}{% if s.user_id == current_user.id %} <small>(あなた)</small>{% endif %}</h2>
+    <p class="big">{{ s.total|yen }}</p>
+    <progress value="{{ s.rate_capped }}" max="100">{{ '%.1f'|format(s.rate) }}%</progress>
     <dl class="stats">
-      <div><dt>残額</dt><dd>{{ row.remaining|yen }}</dd></div>
-      <div><dt>達成率</dt><dd>{{ '%.1f'|format(row.rate) }}%</dd></div>
-      <div><dt>最終更新</dt><dd>{{ row.last_updated_at|jst }}</dd></div>
+      <div><dt>残額</dt><dd>{{ s.remaining|yen }}</dd></div>
+      <div><dt>達成率</dt><dd>{{ '%.1f'|format(s.rate) }}%</dd></div>
+      <div><dt>最終更新</dt><dd>{{ s.last_updated_at|jst }}</dd></div>
     </dl>
   </section>
   {% endfor %}

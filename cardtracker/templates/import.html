@@ -5,7 +5,7 @@
   <h1>明細CSVの取り込み</h1>
   <p>Vpassでダウンロードした「ご利用明細」のCSVファイルを選んで、取り込んでください。毎月の明細が確定したら、その月の分を追加します。</p>
   <form method="post" enctype="multipart/form-data" class="stack">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {{ csrf_field() }}
     <label>CSVファイル
       <input type="file" name="csv_file" accept=".csv,text/csv" required>
     </label>

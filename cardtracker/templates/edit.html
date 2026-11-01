@@ -18,7 +18,7 @@
 
 <section class="card">
   <form method="post" class="stack">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {{ csrf_field() }}
     <fieldset class="choices">
       <legend>判定</legend>
       {% for key in ['target', 'excluded', 'review'] %}
@@ -38,13 +38,13 @@
   </form>
   {% if tx.manual_override %}
   <form method="post" action="{{ url_for('main.reset_transaction', tx_id=tx.id) }}">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {{ csrf_field() }}
     <button type="submit" class="link-button">手動の修正を取り消して自動判定に戻す</button>
   </form>
   {% endif %}
   {% if tx.source == 'manual' %}
   <form method="post" action="{{ url_for('main.delete_transaction', tx_id=tx.id) }}">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {{ csrf_field() }}
     <button type="submit" class="link-button danger">この手動登録を削除する</button>
   </form>
   {% endif %}
