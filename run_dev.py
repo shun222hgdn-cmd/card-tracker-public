@@ -1,4 +1,4 @@
-"""ローカル開発用の起動スクリプト。ダミーログイン・ダミーGmailで動く。
+"""ローカル開発用の起動スクリプト。Googleの設定なしで、ダミーログインで動く。
 
     .venv\Scripts\python run_dev.py   →  http://localhost:5050
 """

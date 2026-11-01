@@ -6,14 +6,12 @@
   <h1>取引の確認・修正</h1>
   <dl class="detail">
     <div><dt>利用日時</dt><dd>{{ tx.used_at_label }}</dd></div>
-    <div><dt>利用先</dt><dd>{{ tx.merchant or '不明' }}{% if tx.usage_type %}({{ tx.usage_type }}){% endif %}</dd></div>
+    <div><dt>利用先</dt><dd>{{ tx.merchant or '不明' }}</dd></div>
     <div><dt>{{ '明細CSVの金額' if tx.source == 'csv' else '元の金額' }}</dt><dd>
-      {%- if tx.original_amount is none %}不明
-      {%- elif tx.currency == 'JPY' %}{{ tx.original_amount|yen }}
-      {%- else %}{{ '{:,.2f}'.format(tx.original_amount) }} {{ tx.currency }}{% endif -%}
+      {{- tx.original_amount|yen -}}
     </dd></div>
     {% if tx.card_label %}<div><dt>カード</dt><dd>{{ tx.card_label }}</dd></div>{% endif %}
-    <div><dt>取得元</dt><dd>{{ {'gmail': 'Gmail(利用通知)', 'csv': '明細CSV', 'manual': '手動登録'}[tx.source] }}</dd></div>
+    <div><dt>取得元</dt><dd>{{ '明細CSV' if tx.source == 'csv' else '手動登録' }}</dd></div>
     <div><dt>自動判定</dt><dd>{{ labels[tx.auto_status] }}{% if tx.auto_reason %}({{ tx.auto_reason }}){% endif %}</dd></div>
   </dl>
 </section>
@@ -30,9 +28,9 @@
     <label>集計金額(円)
       <input type="text" name="corrected_amount" inputmode="numeric"
         value="{{ tx.corrected_amount if tx.corrected_amount is not none else '' }}"
-        placeholder="{{ tx.effective_amount if tx.effective_amount is not none else '外貨・不明の場合は円で入力' }}">
+        placeholder="{{ tx.original_amount|yen }}">
     </label>
-    <p class="muted small">空欄ならメール記載の金額で集計します。部分返金や外貨の円換算はここで修正してください。</p>
+    <p class="muted small">空欄なら明細の金額で集計します。部分返金などで金額が変わったときは、ここで修正してください。</p>
     <label>メモ
       <input type="text" name="note" maxlength="500" value="{{ tx.note or '' }}">
     </label>

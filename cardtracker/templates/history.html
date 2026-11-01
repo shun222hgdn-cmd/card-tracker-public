@@ -21,7 +21,7 @@
   <li class="tx{% if not in_range %} out-of-range{% endif %}">
     <a href="{{ url_for('main.edit_transaction', tx_id=tx.id, back=status) }}">
       <span class="tx-main">
-        <span class="tx-merchant">{{ tx.merchant or '(解析できない通知)' }}{% if tx.source == 'manual' %} <small>手動登録</small>{% elif tx.source == 'csv' %} <small>CSV</small>{% endif %}</span>
+        <span class="tx-merchant">{{ tx.merchant or '-' }}{% if tx.source == 'manual' %} <small>手動登録</small>{% elif tx.source == 'csv' %} <small>CSV</small>{% endif %}</span>
         <span class="tx-date">{{ tx.used_at_label }}</span>
         {% if tx.auto_reason and not tx.manual_override %}<span class="tx-reason">{{ tx.auto_reason }}</span>{% endif %}
         {% if not in_range %}<span class="tx-reason">集計期間外</span>{% endif %}
@@ -29,9 +29,7 @@
       <span class="tx-side">
         <span class="tx-amount">
           {%- if tx.corrected_amount is not none %}{{ tx.corrected_amount|yen }} <small>修正済</small>
-          {%- elif tx.original_amount is none %}-
-          {%- elif tx.currency == 'JPY' %}{{ tx.original_amount|yen }}
-          {%- else %}{{ '{:,.2f}'.format(tx.original_amount) }} {{ tx.currency }}{% endif -%}
+          {%- else %}{{ tx.original_amount|yen }}{% endif -%}
         </span>
         <span class="badge badge-{{ tx.final_status }}">{{ tx.status_label }}{% if tx.manual_override %}・手動{% endif %}</span>
       </span>

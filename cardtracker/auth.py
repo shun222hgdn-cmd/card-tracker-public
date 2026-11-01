@@ -9,8 +9,7 @@ from flask import Blueprint, abort, current_app, flash, g, redirect, render_temp
 from sqlalchemy import select
 
 from .db import db_session
-from .gmail_client import GMAIL_SCOPE
-from .models import CardSetting, GmailConnection, User
+from .models import CardSetting, User
 
 bp = Blueprint("auth", __name__)
 oauth = OAuth()
@@ -23,15 +22,14 @@ def init_oauth(app) -> None:
     oauth.init_app(app)
     if not cfg.google_client_id:
         return
-    # ログイン用(メールアドレスとアカウントIDだけ)と、Gmail読み取り用を別々に登録する。
-    # Gmailの許可はログインとは別に、本人が設定画面から明示的に与える。
-    common = dict(
+    # ログインに必要な、メールアドレスとアカウントIDだけを求める(Gmailなどへのアクセスは求めない)
+    oauth.register(
+        "google",
         client_id=cfg.google_client_id,
         client_secret=cfg.google_client_secret,
         server_metadata_url=GOOGLE_METADATA,
+        client_kwargs={"scope": "openid email profile"},
     )
-    oauth.register("google", client_kwargs={"scope": "openid email profile"}, **common)
-    oauth.register("google_gmail", client_kwargs={"scope": f"openid email {GMAIL_SCOPE}"}, **common)
 
 
 def external_url(endpoint: str) -> str:
@@ -61,8 +59,6 @@ def sync_allowed_users(sess, allowed_users) -> None:
                     period_end=date(today.year, 12, 31),
                 )
             )
-        if user.gmail_connection is None:
-            sess.add(GmailConnection(user_id=user.id))
     sess.commit()
 
 

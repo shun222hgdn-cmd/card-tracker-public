@@ -1,6 +1,6 @@
 """Vpassの「ご利用明細」CSVの取り込み。
 
-Gmail連携をしない家族は、毎月ダウンロードできる明細CSVをアップロードして集計する。
+家族それぞれが、Vpassで毎月ダウンロードできる明細CSVをアップロードして集計する。
 想定しているCSV(Shift_JIS):
 
     〇〇 様,4980-00**-****-****,三井住友カード（ＮＬ）
@@ -28,9 +28,8 @@ from decimal import Decimal
 
 from sqlalchemy import select
 
-from .classifier import apply_classification
+from .classifier import apply_classification, load_rules
 from .models import Transaction, User
-from .sync import load_rules
 
 MAX_BYTES = 1_000_000
 DATE_RE = re.compile(r"^(\d{2,4})/(\d{1,2})/(\d{1,2})$")
@@ -144,7 +143,6 @@ def import_csv(session, user: User, data: bytes) -> ImportOutcome:
             merchant=row.merchant,
             card_label=parsed.card_label,
             original_amount=Decimal(row.amount),
-            currency="JPY",
         )
         session.add(tx)
         apply_classification(tx, rules, user.card_setting.card_label)

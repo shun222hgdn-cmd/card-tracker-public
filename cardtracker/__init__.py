@@ -16,22 +16,22 @@ JST = timezone(timedelta(hours=9))
 
 # 初期の対象外キーワード(仮)。三井住友カードの公式条件と実際の通知表記を照合して、設定画面から調整する。
 DEFAULT_RULES = [
-    ("年会費", "all", "年会費"),
-    ("キャッシング", "all", "キャッシング"),
-    ("SUICA", "merchant", "電子マネーチャージ"),
-    ("PASMO", "merchant", "電子マネーチャージ"),
-    ("ICOCA", "merchant", "電子マネーチャージ"),
-    ("WAON", "merchant", "電子マネーチャージ"),
-    ("NANACO", "merchant", "電子マネーチャージ"),
-    ("EDY", "merchant", "電子マネーチャージ"),
-    ("SBI証券", "merchant", "クレカ積立"),
-    ("国民年金", "merchant", "国民年金保険料"),
+    ("年会費", "年会費"),
+    ("キャッシング", "キャッシング"),
+    ("SUICA", "電子マネーチャージ"),
+    ("PASMO", "電子マネーチャージ"),
+    ("ICOCA", "電子マネーチャージ"),
+    ("WAON", "電子マネーチャージ"),
+    ("NANACO", "電子マネーチャージ"),
+    ("EDY", "電子マネーチャージ"),
+    ("SBI証券", "クレカ積立"),
+    ("国民年金", "国民年金保険料"),
 ]
 
 
 def seed_rules(sess) -> None:
     if sess.scalar(select(ExclusionRule.id).limit(1)) is None:
-        sess.add_all(ExclusionRule(keyword=k, applies_to=a, memo=f"初期値(仮): {m}") for k, a, m in DEFAULT_RULES)
+        sess.add_all(ExclusionRule(keyword=k, memo=f"初期値(仮): {m}") for k, m in DEFAULT_RULES)
         sess.commit()
 
 
@@ -87,7 +87,7 @@ def create_app(config: Config | None = None) -> Flask:
     def jst(value, fmt="%Y/%m/%d %H:%M"):
         """DBのUTC時刻を日本時間で表示する。"""
         if value is None:
-            return "未同期"
+            return "未取込"
         return value.replace(tzinfo=timezone.utc).astimezone(JST).strftime(fmt)
 
     @app.errorhandler(400)

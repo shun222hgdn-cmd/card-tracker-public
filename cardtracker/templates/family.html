@@ -2,7 +2,7 @@
 {% block title %}家族の達成状況 | カードトラッカー{% endblock %}
 {% block content %}
 <h1>家族の達成状況</h1>
-<p class="muted">各自が最後にGmail同期・CSV取込をした時点の推定額です。明細は本人以外には表示されません。</p>
+<p class="muted">各自が最後に明細CSVを取り込んだ時点の推定額です。明細は本人以外には表示されません。</p>
 <div class="family">
   {% for row in rows %}
   <section class="card">
@@ -12,7 +12,7 @@
     <dl class="stats">
       <div><dt>残額</dt><dd>{{ row.remaining|yen }}</dd></div>
       <div><dt>達成率</dt><dd>{{ '%.1f'|format(row.rate) }}%</dd></div>
-      <div><dt>最終更新</dt><dd>{{ row.last_sync_at|jst }}</dd></div>
+      <div><dt>最終更新</dt><dd>{{ row.last_updated_at|jst }}</dd></div>
     </dl>
   </section>
   {% endfor %}

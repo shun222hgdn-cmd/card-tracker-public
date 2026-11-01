@@ -3,7 +3,7 @@
 ローカル開発はSQLiteファイル、Vercel本番はPostgres(Neon)を使う。
 どちらもSQLAlchemy経由で扱うので、アプリのコードは同じまま切り替えられる。
 """
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -48,3 +48,35 @@ def create_tables(engine) -> None:
     from . import models  # noqa: F401  モデル定義を読み込んでからテーブルを作る
 
     Base.metadata.create_all(engine)
+    remove_gmail_schema(engine)
+
+
+# Gmail連携を廃止したとき(2026-11)に不要になった列
+LEGACY_COLUMNS = {
+    "transactions": [
+        "gmail_message_id", "seq", "usage_type", "currency",
+        "is_cancel", "cancelled", "parse_failed", "duplicate_suspect",
+    ],
+    "card_settings": ["vpass_notice_confirmed"],
+    "exclusion_rules": ["applies_to"],
+}
+
+
+def remove_gmail_schema(engine) -> None:
+    """Gmail連携時代の本番DB(Postgres)を、今のテーブル定義に合わせる。
+
+    - Gmailから取り込んだ取引は、CSVで取り込み直すと二重計上になるので削除する
+    - Gmailの認可情報(暗号化済みトークン)のテーブルを削除する
+    - 使わなくなった列を削除する
+    すでに移行済みなら何もしない。ローカルのSQLiteは作り直せばよいので対象外。
+    """
+    if engine.dialect.name != "postgresql":
+        return
+    if "gmail_message_id" not in {c["name"] for c in inspect(engine).get_columns("transactions")}:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM transactions WHERE source = 'gmail'"))
+        conn.execute(text("DROP TABLE IF EXISTS gmail_connections"))
+        for table, columns in LEGACY_COLUMNS.items():
+            for column in columns:
+                conn.execute(text(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {column}"))
