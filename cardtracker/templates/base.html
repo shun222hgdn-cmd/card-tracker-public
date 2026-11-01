@@ -31,7 +31,7 @@
   <footer class="site-footer">
     <span>{{ current_user.display_name }}({{ current_user.email }})</span>
     <form method="post" action="{{ url_for('auth.logout') }}">
-      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {{ csrf_field() }}
       <button type="submit" class="link-button">ログアウト</button>
     </form>
   </footer>

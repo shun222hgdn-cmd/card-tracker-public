@@ -6,7 +6,7 @@
 <section class="card">
   <h2>集計期間</h2>
   <form method="post" action="{{ url_for('main.save_period') }}" class="stack">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {{ csrf_field() }}
     <label>開始日 <input type="date" name="period_start" required value="{{ setting.period_start.isoformat() }}"></label>
     <label>終了日 <input type="date" name="period_end" required value="{{ setting.period_end.isoformat() }}"></label>
     <label>対象カード名(任意)
@@ -28,23 +28,18 @@
         {% if rule.memo or not rule.enabled %}<span class="muted small">{{ rule.memo or '' }}{% if not rule.enabled %}{{ ' / ' if rule.memo }}無効{% endif %}</span>{% endif %}
       </span>
       {% if current_user.is_admin %}
-      <span class="rule-actions">
-        <form method="post" action="{{ url_for('main.toggle_rule', rule_id=rule.id) }}">
-          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-          <button type="submit" class="link-button">{{ '無効にする' if rule.enabled else '有効にする' }}</button>
-        </form>
-        <form method="post" action="{{ url_for('main.delete_rule', rule_id=rule.id) }}">
-          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-          <button type="submit" class="link-button danger">削除</button>
-        </form>
-      </span>
+      <form method="post" class="rule-actions">
+        {{ csrf_field() }}
+        <button formaction="{{ url_for('main.change_rule', rule_id=rule.id, action='toggle') }}" class="link-button">{{ '無効にする' if rule.enabled else '有効にする' }}</button>
+        <button formaction="{{ url_for('main.change_rule', rule_id=rule.id, action='delete') }}" class="link-button danger">削除</button>
+      </form>
       {% endif %}
     </li>
     {% endfor %}
   </ul>
   {% if current_user.is_admin %}
-  <form method="post" action="{{ url_for('main.add_rule') }}" class="stack">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <form method="post" action="{{ url_for('main.change_rule') }}" class="stack">
+    {{ csrf_field() }}
     <label>キーワード <input type="text" name="keyword" required maxlength="100"></label>
     <label>メモ(任意) <input type="text" name="memo" maxlength="200"></label>
     <button type="submit">ルールを追加</button>

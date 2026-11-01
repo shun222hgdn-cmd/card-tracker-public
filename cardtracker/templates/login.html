@@ -6,7 +6,7 @@
   <p>家族3人の三井住友カード(NL)の年間利用額(推定)を管理します。登録済みのGoogleアカウントだけが利用できます。</p>
   {% if google_ready %}
   <form method="post" action="{{ url_for('auth.login_google') }}">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {{ csrf_field() }}
     <button type="submit" class="primary wide">Googleでログイン</button>
   </form>
   {% endif %}
@@ -16,7 +16,7 @@
   <div class="button-row">
   {% for u in dev_users %}
   <form method="post" action="{{ url_for('auth.login_dev') }}">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {{ csrf_field() }}
     <input type="hidden" name="user_id" value="{{ u.id }}">
     <button type="submit">{{ u.display_name }}としてログイン</button>
   </form>

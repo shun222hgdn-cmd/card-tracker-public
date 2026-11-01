@@ -1,4 +1,4 @@
-"""Googleログインと、登録済み3アカウント以外の拒否(要件 F-01, 2-1)。"""
+"""Googleログインと、登録済みアカウント以外の拒否(要件 F-01, 2-1)。"""
 from __future__ import annotations
 
 from datetime import date
@@ -14,51 +14,33 @@ from .models import CardSetting, User
 bp = Blueprint("auth", __name__)
 oauth = OAuth()
 
-GOOGLE_METADATA = "https://accounts.google.com/.well-known/openid-configuration"
-
 
 def init_oauth(app) -> None:
     cfg = app.config["APP"]
     oauth.init_app(app)
-    if not cfg.google_client_id:
-        return
-    # ログインに必要な、メールアドレスとアカウントIDだけを求める(Gmailなどへのアクセスは求めない)
-    oauth.register(
-        "google",
-        client_id=cfg.google_client_id,
-        client_secret=cfg.google_client_secret,
-        server_metadata_url=GOOGLE_METADATA,
-        client_kwargs={"scope": "openid email profile"},
-    )
-
-
-def external_url(endpoint: str) -> str:
-    base = current_app.config["APP"].base_url
-    if base:
-        return base + url_for(endpoint)
-    return url_for(endpoint, _external=True)
+    if cfg.google_client_id:
+        # ログインに必要な、メールアドレスとアカウントIDだけを求める(Gmailなどへのアクセスは求めない)
+        oauth.register(
+            "google",
+            client_id=cfg.google_client_id,
+            client_secret=cfg.google_client_secret,
+            server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+            client_kwargs={"scope": "openid email profile"},
+        )
 
 
 def sync_allowed_users(sess, allowed_users) -> None:
     """環境変数 ALLOWED_USERS の内容をusersテーブルに反映する。"""
-    today = date.today()
+    year = date.today().year
     for order, au in enumerate(allowed_users):
         user = sess.scalar(select(User).where(User.email == au.email))
         if user is None:
             user = User(email=au.email, display_name=au.display_name)
             sess.add(user)
             sess.flush()
-        user.display_name = au.display_name
-        user.is_admin = au.is_admin
-        user.sort_order = order
+        user.display_name, user.is_admin, user.sort_order = au.display_name, au.is_admin, order
         if user.card_setting is None:
-            sess.add(
-                CardSetting(
-                    user_id=user.id,
-                    period_start=date(today.year, 1, 1),
-                    period_end=date(today.year, 12, 31),
-                )
-            )
+            sess.add(CardSetting(user_id=user.id, period_start=date(year, 1, 1), period_end=date(year, 12, 31)))
     sess.commit()
 
 
@@ -67,16 +49,12 @@ def allowed_emails() -> set[str]:
 
 
 def load_current_user() -> None:
-    g.user = None
     user_id = session.get("user_id")
-    if user_id is None:
-        return
-    user = db_session.get(User, user_id)
+    g.user = db_session.get(User, user_id) if user_id else None
     # 環境変数から外されたアカウントは、ログイン中でも次のアクセスで締め出す
-    if user is None or user.email not in allowed_emails():
+    if g.user is not None and g.user.email not in allowed_emails():
         session.clear()
-        return
-    g.user = user
+        g.user = None
 
 
 def login_required(view):
@@ -91,9 +69,8 @@ def login_required(view):
 
 def admin_required(view):
     @wraps(view)
+    @login_required
     def wrapped(*args, **kwargs):
-        if g.user is None:
-            return redirect(url_for("auth.login"))
         if not g.user.is_admin:
             abort(403)
         return view(*args, **kwargs)
@@ -101,10 +78,11 @@ def admin_required(view):
     return wrapped
 
 
-def _start_session(user: User) -> None:
+def _start_session(user: User):
     session.clear()  # ログイン前のセッションを引き継がない
     session["user_id"] = user.id
     session.permanent = True
+    return redirect(url_for("main.home"))
 
 
 @bp.get("/login")
@@ -112,31 +90,28 @@ def login():
     if g.user:
         return redirect(url_for("main.home"))
     cfg = current_app.config["APP"]
-    dev_users = []
-    if cfg.dev_mode:
-        dev_users = db_session.scalars(select(User).order_by(User.sort_order)).all()
+    dev_users = db_session.scalars(select(User).order_by(User.sort_order)).all() if cfg.dev_mode else []
     return render_template("login.html", dev_users=dev_users, google_ready=bool(cfg.google_client_id))
 
 
 @bp.post("/login/google")
 def login_google():
-    if not current_app.config["APP"].google_client_id:
+    cfg = current_app.config["APP"]
+    if not cfg.google_client_id:
         abort(404)
-    return oauth.google.authorize_redirect(external_url("auth.callback"), prompt="select_account")
+    callback = cfg.base_url + url_for("auth.callback") if cfg.base_url else url_for("auth.callback", _external=True)
+    return oauth.google.authorize_redirect(callback, prompt="select_account")
 
 
 @bp.get("/auth/callback")
 def callback():
     try:
-        token = oauth.google.authorize_access_token()
+        info = oauth.google.authorize_access_token().get("userinfo") or {}
     except Exception:  # noqa: BLE001
-        flash("ログインに失敗しました。もう一度お試しください。", "error")
-        return redirect(url_for("auth.login"))
-
-    info = token.get("userinfo") or {}
+        info = {}
     sub, email = info.get("sub"), (info.get("email") or "").lower()
     if not sub or not email or not info.get("email_verified"):
-        flash("Googleアカウントの情報を確認できませんでした。", "error")
+        flash("ログインに失敗しました。もう一度お試しください。", "error")
         return redirect(url_for("auth.login"))
 
     user = db_session.scalar(select(User).where(User.google_sub == sub))
@@ -146,30 +121,18 @@ def callback():
         if user is not None:
             user.google_sub = sub
             db_session.commit()
-
     if user is None or user.email not in allowed_emails():
         flash("このGoogleアカウントは利用登録されていません。", "error")
         return redirect(url_for("auth.login"))
-
-    _start_session(user)
-    return redirect(url_for("main.home"))
-
-
-@bp.get("/privacy")
-def privacy():
-    # Googleの同意画面から参照されるため、ログインなしで見られるようにする
-    return render_template("privacy.html")
+    return _start_session(user)
 
 
 @bp.post("/login/dev")
 def login_dev():
-    if not current_app.config["APP"].dev_mode:
+    user = db_session.get(User, request.form.get("user_id", type=int) or 0)
+    if not current_app.config["APP"].dev_mode or user is None:
         abort(404)
-    user = db_session.get(User, request.form.get("user_id", type=int))
-    if user is None:
-        abort(400)
-    _start_session(user)
-    return redirect(url_for("main.home"))
+    return _start_session(user)
 
 
 @bp.post("/logout")
@@ -177,3 +140,9 @@ def logout():
     session.clear()
     flash("ログアウトしました。", "info")
     return redirect(url_for("auth.login"))
+
+
+@bp.get("/privacy")
+def privacy():
+    # Googleの同意画面から参照されるため、ログインなしで見られるようにする
+    return render_template("privacy.html")
