@@ -24,6 +24,14 @@ DEFAULT_RULES = {
 }
 
 
+SECURITY_HEADERS = {
+    "X-Frame-Options": "DENY",  # 他サイトの枠に埋め込ませない
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": "default-src 'self'; form-action 'self' https://accounts.google.com",
+}
+
+
 def seed_rules(sess) -> None:
     if sess.scalar(select(ExclusionRule.id).limit(1)) is None:
         sess.add_all(ExclusionRule(keyword=k, memo=f"初期値(仮): {memo}")
@@ -56,23 +64,15 @@ def create_app(config: Config | None = None) -> Flask:
     app.register_blueprint(views.bp)
     cli.register(app)
 
-    @app.before_request
-    def before():
-        check_csrf()
-        auth.load_current_user()
-
-    @app.teardown_appcontext
-    def remove_session(_exc=None):
-        db_session.remove()
+    app.before_request(check_csrf)
+    app.before_request(auth.load_current_user)
+    app.teardown_appcontext(lambda _exc=None: db_session.remove())
 
     @app.after_request
     def security_headers(resp):
-        resp.headers["X-Frame-Options"] = "DENY"
-        resp.headers["X-Content-Type-Options"] = "nosniff"
-        resp.headers["Referrer-Policy"] = "same-origin"
-        resp.headers["Content-Security-Policy"] = "default-src 'self'; form-action 'self' https://accounts.google.com"
+        resp.headers.update(SECURITY_HEADERS)
         if not cfg.dev_mode:
-            resp.headers["Strict-Transport-Security"] = "max-age=31536000"
+            resp.headers["Strict-Transport-Security"] = "max-age=31536000"  # 常にHTTPSで開かせる
         return resp
 
     @app.context_processor
@@ -84,11 +84,7 @@ def create_app(config: Config | None = None) -> Flask:
         """DBのUTC時刻を日本時間で表示する。"""
         return value.replace(tzinfo=timezone.utc).astimezone(JST).strftime("%Y/%m/%d %H:%M") if value else "未取込"
 
-    @app.errorhandler(400)
-    @app.errorhandler(403)
-    @app.errorhandler(404)
-    @app.errorhandler(413)
-    def error_page(err):
-        return render_template("error.html", error=err), err.code
+    for code in (400, 403, 404, 413):
+        app.register_error_handler(code, lambda err: (render_template("error.html", error=err), err.code))
 
     return app

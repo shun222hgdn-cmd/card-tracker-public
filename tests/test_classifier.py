@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from cardtracker.classifier import Rule, apply_classification, classify
+from cardtracker.classifier import apply_classification, classify
 from cardtracker.models import EXCLUDED, REVIEW, TARGET, Transaction
 
 
@@ -11,7 +11,7 @@ def tx(**kw):
     return Transaction(**base)
 
 
-RULES = [Rule("Suica"), Rule("年会費")]
+RULES = ["Suica", "年会費"]
 
 
 def test_plain_purchase_is_target():

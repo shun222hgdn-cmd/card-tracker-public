@@ -6,10 +6,8 @@
   <h1>取引の確認・修正</h1>
   <dl class="detail">
     <div><dt>利用日時</dt><dd>{{ tx.used_at_label }}</dd></div>
-    <div><dt>利用先</dt><dd>{{ tx.merchant or '不明' }}</dd></div>
-    <div><dt>{{ '明細CSVの金額' if tx.source == 'csv' else '元の金額' }}</dt><dd>
-      {{- tx.original_amount|yen -}}
-    </dd></div>
+    <div><dt>利用先</dt><dd>{{ tx.merchant }}</dd></div>
+    <div><dt>元の金額</dt><dd>{{ tx.original_amount|yen }}</dd></div>
     {% if tx.card_label %}<div><dt>カード</dt><dd>{{ tx.card_label }}</dd></div>{% endif %}
     <div><dt>取得元</dt><dd>{{ '明細CSV' if tx.source == 'csv' else '手動登録' }}</dd></div>
     <div><dt>自動判定</dt><dd>{{ labels[tx.auto_status] }}{% if tx.auto_reason %}({{ tx.auto_reason }}){% endif %}</dd></div>
@@ -26,14 +24,10 @@
       {% endfor %}
     </fieldset>
     <label>集計金額(円)
-      <input type="text" name="corrected_amount" inputmode="numeric"
-        value="{{ tx.corrected_amount if tx.corrected_amount is not none else '' }}"
-        placeholder="{{ tx.original_amount|yen }}">
+      <input type="text" name="corrected_amount" inputmode="numeric" value="{{ tx.corrected_amount if tx.corrected_amount is not none else '' }}" placeholder="{{ tx.original_amount|yen }}">
     </label>
     <p class="muted small">空欄なら明細の金額で集計します。部分返金などで金額が変わったときは、ここで修正してください。</p>
-    <label>メモ
-      <input type="text" name="note" maxlength="500" value="{{ tx.note or '' }}">
-    </label>
+    <label>メモ <input type="text" name="note" maxlength="500" value="{{ tx.note or '' }}"></label>
     <button type="submit" class="primary">保存する</button>
   </form>
   {% if tx.manual_override %}

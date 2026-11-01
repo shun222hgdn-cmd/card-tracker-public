@@ -13,7 +13,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from sqlalchemy import delete, select
 
 from .auth import admin_required, login_required
-from .classifier import apply_classification, load_rules, reclassify_all, reclassify_user
+from .classifier import apply_classification, load_rules, reclassify
 from .csv_import import CsvFormatError, import_csv
 from .db import db_session
 from .models import STATUS_LABELS, STATUSES, ExclusionRule, Transaction, User
@@ -186,7 +186,7 @@ def save_period():
     label_changed = card_label != s.card_label
     s.period_start, s.period_end, s.card_label, s.period_confirmed = start, end, card_label, True
     if label_changed:
-        reclassify_user(db_session, g.user)
+        reclassify(db_session, [g.user])
     db_session.commit()
     flash("集計期間を保存しました。対象金額は新しい期間で再計算されます。", "info")
     return redirect(url_for("main.settings"))
@@ -235,7 +235,7 @@ def change_rule(rule_id=None, action="add"):
         else:
             abort(404)
     db_session.flush()
-    reclassify_all(db_session)
+    reclassify(db_session)
     db_session.commit()
     return redirect(url_for("main.settings"))
 
