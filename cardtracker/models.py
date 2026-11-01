@@ -57,14 +57,14 @@ class Transaction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    source: Mapped[str] = mapped_column(String(10), default="csv")  # csv / manual
+    source: Mapped[str] = mapped_column(String(10), default="csv")  # 現在はcsvのみ(本番DBにある列なので残す)
     # CSV取込の重複防止キー(利用日・利用先・金額・同じ内容の何件目か から作るハッシュ)
     import_key: Mapped[str | None] = mapped_column(String(64))
 
     used_at: Mapped[datetime] = mapped_column(DateTime)  # 日本時間
     merchant: Mapped[str] = mapped_column(String(200))
     card_label: Mapped[str | None] = mapped_column(String(100))
-    original_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))  # 明細CSV(または手動登録)の円金額
+    original_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))  # 明細CSVの円金額
     corrected_amount: Mapped[int | None] = mapped_column(Integer)  # 本人が修正した円金額
 
     auto_status: Mapped[str] = mapped_column(String(10), default=REVIEW)
@@ -83,8 +83,7 @@ class Transaction(Base):
 
     @property
     def used_at_label(self) -> str:
-        # 明細CSVには時刻がないので日付だけ表示する
-        return self.used_at.strftime("%Y/%m/%d" if self.source == "csv" else "%Y/%m/%d %H:%M")
+        return self.used_at.strftime("%Y/%m/%d")
 
     @property
     def status_label(self) -> str:

@@ -145,4 +145,5 @@ def logout():
 @bp.get("/privacy")
 def privacy():
     # Googleの同意画面から参照されるため、ログインなしで見られるようにする
-    return render_template("privacy.html")
+    contact = next((u.email for u in current_app.config["APP"].allowed_users if u.is_admin), None)
+    return render_template("privacy.html", contact=contact)

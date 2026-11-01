@@ -49,7 +49,7 @@
 
 <section class="card">
   <h2>明細のリセット</h2>
-  <p class="muted small">自分が取り込んだ明細(手動登録を含む)を削除します。集計期間・対象外ルール・家族の明細はそのまま残ります。削除したあと、明細CSVを取り込み直せます。元に戻すことはできません。</p>
+  <p class="muted small">自分が取り込んだ明細を削除します。集計期間・対象外ルール・家族の明細はそのまま残ります。削除したあと、明細CSVを取り込み直せます。元に戻すことはできません。</p>
   <form method="post" action="{{ url_for('main.reset_data') }}" class="stack">
     {{ csrf_field() }}
     <label>削除する月 <input type="month" name="month" required></label>

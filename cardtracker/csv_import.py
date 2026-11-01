@@ -93,7 +93,7 @@ def import_csv(session, user: User, data: bytes) -> tuple[int, int]:
         seen[ident] += 1
         if key in existing:
             continue
-        tx = Transaction(user_id=user.id, source="csv", import_key=key, used_at=used_at, merchant=merchant,
+        tx = Transaction(user_id=user.id, import_key=key, used_at=used_at, merchant=merchant,
                          card_label=card_label, original_amount=Decimal(amount))
         session.add(tx)
         apply_classification(tx, rules, user.card_setting.card_label)

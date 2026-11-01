@@ -21,8 +21,10 @@
   <h2>データの削除</h2>
   <p>取り込んだデータの削除を希望する場合は、下記の連絡先までご連絡ください。</p>
 
+  {% if contact %}
   <h2>連絡先</h2>
-  <p>contact@example.com</p>
+  <p>{{ contact }}</p>
+  {% endif %}
   <p class="muted small">制定日: 2026年10月17日 / 改定日: 2026年11月1日(Gmail連携を廃止)</p>
 </section>
 {% endblock %}

@@ -23,7 +23,7 @@ def load_rules(session) -> list[str]:
 
 
 def classify(tx: Transaction, rules: list[str], card_label_setting: str | None) -> tuple[str, str]:
-    if tx.source == "csv" and match_key(card_label_setting):
+    if match_key(card_label_setting):
         if not tx.card_label:
             return REVIEW, "カード名を判別できません"
         if match_key(card_label_setting) not in match_key(tx.card_label):

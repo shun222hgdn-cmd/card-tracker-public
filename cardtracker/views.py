@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import unicodedata
 from datetime import date, datetime, timedelta
-from decimal import Decimal
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 from sqlalchemy import delete, select
@@ -96,43 +95,6 @@ def reset_transaction(tx_id):
     return redirect(url_for("main.edit_transaction", tx_id=tx.id))
 
 
-@bp.post("/transactions/<int:tx_id>/delete")
-@login_required
-def delete_transaction(tx_id):
-    tx = own_transaction(tx_id)
-    if tx.source != "manual":
-        abort(400, "CSVから取り込んだ取引は削除できません。「対象外」に変更してください。")
-    db_session.delete(tx)
-    db_session.commit()
-    flash("手動登録の取引を削除しました。", "info")
-    return redirect(url_for("main.history"))
-
-
-# ---------- 手動登録 (F-09) ----------
-
-@bp.route("/transactions/new", methods=["GET", "POST"])
-@login_required
-def new_transaction():
-    if request.method == "GET":
-        return render_template("new.html", form={})
-    form = request.form
-    try:
-        used_at = datetime.strptime(f"{form.get('date')} {form.get('time') or '00:00'}", "%Y-%m-%d %H:%M")
-        amount = parse_yen(form.get("amount"))
-    except ValueError:
-        amount = None
-    merchant = (form.get("merchant") or "").strip()[:200]
-    if amount is None or not merchant:
-        flash("日付・利用先・金額(円)を正しく入力してください。", "error")
-        return render_template("new.html", form=form)
-    tx = Transaction(user_id=g.user.id, source="manual", used_at=used_at, merchant=merchant,
-                     original_amount=Decimal(amount))
-    db_session.add(tx)
-    classify_and_save(tx)
-    flash(f"登録しました(判定: {tx.status_label})。", "info")
-    return redirect(url_for("main.history"))
-
-
 # ---------- 明細CSVの取り込み (F-02) ----------
 
 @bp.route("/import", methods=["GET", "POST"])
@@ -195,7 +157,7 @@ def save_period():
 @bp.post("/settings/reset")
 @login_required
 def reset_data():
-    """自分の明細(CSV取込・手動登録)を、全部または指定した月の分だけ削除する。家族の明細と設定は残す。"""
+    """自分の明細を、全部または指定した月の分だけ削除する。家族の明細と設定は残す。"""
     if request.form.get("confirm") != "1":
         flash("「削除してよい」にチェックを入れてください。", "error")
         return redirect(url_for("main.settings"))

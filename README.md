@@ -3,14 +3,14 @@
 家族3人が使う三井住友カード(NL)の「年間100万円利用」の進み具合を管理するWebアプリです。
 各自がVpassで毎月ダウンロードできる**明細CSV**をアップロードすると、対象になる利用額を集計して表示します。
 
-- 自分の画面: 対象利用額(推定)、100万円までの残額、達成率、利用履歴、手動での修正
-- 家族の画面: 3人の達成額・残額・最終更新日時だけを表示(明細は本人にしか見えない)
+- 自分の画面: 対象利用額(推定)、100万円までの残額、達成率、利用履歴、判定と金額の手動修正
+- 家族の画面: 全員の達成額・残額・最終更新日時だけを表示(明細は本人にしか見えない)
 
 > 表示する金額は明細をもとにした**推定値**です。特典の最終判定は三井住友カードの公式情報を優先してください。
 
 ## このリポジトリについて
 
-実際に家族で使っているアプリのソースコードを、個人情報と運用情報を取り除いて公開したものです。本番環境は登録済みのアカウントしかログインできないため、動作は下の「ローカルで動かす」の開発モード(ダミーログイン)で確認できます。
+実際に家族で使っているアプリのソースコードです。個人情報と本番環境の情報は、コードとこのREADMEには載せていません。本番環境は登録済みのアカウントしかログインできないため、動作は下の「ローカルで動かす」の開発モード(ダミーログイン)で確認できます。
 
 ## 画面
 
@@ -39,11 +39,11 @@
 | Googleログイン | Authlib(OAuth 2.0 / OpenID Connect) | Flaskと組み合わせやすい |
 | 明細の取り込み | Python標準の `csv` | Vpassの明細CSVを読むだけなので、追加のライブラリは不要 |
 | DB | SQLAlchemy + **SQLite(ローカル) / Postgres(本番)** | 下の「SQLiteから変えた理由」を参照 |
-| 公開先 | Vercel(Hobbyプラン) + Neon Postgres(無料枠) | 無料、HTTPS対応、GitHubへのpushで自動デプロイ |
+| 公開先 | Vercel + Neon Postgres | HTTPS対応、GitHubへのpushで自動デプロイ |
 
-### SQLiteから変えた理由(要件 7. からの変更点)
+### SQLiteから変えた理由
 
-Vercelのサーバーはリクエストごとに起動・破棄され、ファイルを書いても残りません。SQLiteのままでは「再起動後もデータが残る」(要件 6-3)を満たせないため、本番だけ Postgres(Neon)を使います。
+Vercelのサーバーはリクエストごとに起動・破棄され、ファイルを書いても残りません。SQLiteのままでは再起動後にデータが残らないため、本番だけ Postgres(Neon)を使います。
 
 SQLAlchemyを通しているので、アプリのコードは共通です。ローカル開発とテストはSQLiteのまま動きます。
 また、Vercel上で `DATABASE_URL` が未設定のときは、データを失わないようわざと起動を止めます。
@@ -58,18 +58,17 @@ card-tracker/
 ├─ cardtracker/
 │  ├─ __init__.py          アプリの組み立て・セキュリティヘッダー・初期対象外ルール
 │  ├─ config.py            環境変数の読み込みとチェック
-│  ├─ db.py / models.py    DB接続とテーブル定義(要件 8)
-│  ├─ auth.py              Googleログイン、登録済み3アカウント以外の拒否
+│  ├─ db.py / models.py    DB接続とテーブル定義
+│  ├─ auth.py              Googleログイン、登録済みアカウント以外の拒否
 │  ├─ csv_import.py        明細CSVの読み取りと取り込み(重複防止)
 │  ├─ classifier.py        対象 / 対象外 / 要確認 の自動判定と再判定
 │  ├─ summary.py           集計(対象利用額・残額・達成率)
 │  ├─ views.py             各画面
 │  ├─ security.py          CSRF対策
-│  ├─ cli.py               バックアップ・復元コマンド
-│  ├─ templates/ static/   HTML と CSS
+│  └─ templates/ static/   HTML と CSS
+├─ docs/images/            READMEの画面キャプチャ
 ├─ tests/                  自動テスト(pytest)
-├─ run_dev.py              ローカル起動用
-└─ api/index.py が入口(VercelがFlaskアプリとして自動で全URLを渡す)
+└─ run_dev.py              ローカル起動用
 ```
 
 ---
@@ -119,7 +118,7 @@ http://localhost:5050 を開き、「本人としてログイン」→「明細C
 | 2 | 対象外ルールのキーワードが利用先に含まれる | 対象外 |
 | 3 | 上記以外 | 対象 |
 
-- 「要確認」は、本人が履歴から手動で付ける判定です。要確認の取引は、確認が済むまで集計に入りません
+- 要確認の取引は、確認が済むまで集計に入りません。履歴から本人が手動で要確認にすることもできます
 - 部分返金などで金額が変わったときは、本人が履歴から集計金額を修正します
 - **本人が手動で変えた判定・金額は、CSVの取り込み直しやルール変更があっても上書きしません**(自動判定の結果も別に保存しています)
 
@@ -135,13 +134,13 @@ http://localhost:5050 を開き、「本人としてログイン」→「明細C
 
 | 要件 | 実装 |
 | --- | --- |
-| 登録済み3人だけが使える | `ALLOWED_USERS` のメールアドレスと一致した人だけログインできます。初回ログインでGoogleのアカウントID(sub)を結び付け、以降はIDで本人を確認します。環境変数から外した人は、次にアクセスした時点で締め出されます |
+| 登録済みの人だけが使える | `ALLOWED_USERS` のメールアドレスと一致した人だけログインできます。初回ログインでGoogleのアカウントID(sub)を結び付け、以降はIDで本人を確認します。環境変数から外した人は、次にアクセスした時点で締め出されます |
 | 他人の明細を見られない | 取引の取得・変更はすべて `user_id = ログイン中の本人` で絞り込みます。他人の取引IDをURLに入れても404になります(テストで確認済み) |
 | 家族画面に明細を出さない | 家族画面のテンプレートには集計値しか渡していません |
 | Googleから受け取る情報を最小限に | ログインに必要なメールアドレスとアカウントIDだけを求めます。Gmailなど他のサービスにはアクセスしません |
 | 明細ファイルを残さない | アップロードされたCSVは読み取ったらすぐ捨て、日付・利用先・金額・カード名だけを保存します |
 | 不正な操作 | 全フォームにCSRFトークンを付け、入力値の範囲を確認します。CSP・HSTS などのセキュリティヘッダーも付けています |
-| 秘密情報をGitHubに載せない | `.env`、DBファイル、バックアップは `.gitignore` で除外しています |
+| 秘密情報をGitHubに載せない | 秘密の値は環境変数で渡し、`.env` とDBファイルは `.gitignore` で除外しています。プライバシーページの連絡先も、環境変数の管理者のメールアドレスを表示します |
 
 ---
 
@@ -172,31 +171,8 @@ http://localhost:5050 を開き、「本人としてログイン」→「明細C
 | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(48))"` で生成した値 |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | 手順1で作成したもの |
 | `APP_BASE_URL` | `https://<アプリ名>.vercel.app` |
-| `ALLOWED_USERS` | `me@gmail.com:本人:admin,father@gmail.com:父,mother@gmail.com:母`(`admin` を付けた人が対象外ルールを編集できる) |
+| `ALLOWED_USERS` | `me@gmail.com:本人:admin,father@gmail.com:父,mother@gmail.com:母`(`admin` を付けた人が対象外ルールを編集でき、プライバシーページの連絡先にもなる) |
 
    - 秘密の値(`SECRET_KEY`・`GOOGLE_CLIENT_SECRET`)は種類を **Secret**、それ以外は **Config** にする
    - 家族を追加・削除するときは `ALLOWED_USERS` を編集して再デプロイする
 4. 再デプロイする。初回アクセス時にテーブルと初期の対象外ルールが自動で作られます
-   - 環境変数が足りないときは、500エラーではなく「セットアップ中」のページに、足りない変数の名前が表示されます
-
----
-
-## バックアップと復元
-
-```bash
-# ローカルのDB
-.venv\Scripts\flask --app cardtracker backup backups/2026-10-17.json
-.venv\Scripts\flask --app cardtracker restore backups/2026-10-17.json
-```
-
-本番のDB(Neon)は、PowerShellで接続文字列を一時的に指定して実行します。`ALLOWED_USERS` は本番と同じ値にしてください。
-
-```powershell
-$env:DEV_MODE="1"; $env:DATABASE_URL="postgresql://..."; $env:ALLOWED_USERS="(本番と同じ値)"
-.venv\Scripts\flask --app cardtracker backup backups/prod.json
-```
-
-- バックアップには家族の明細が含まれます。ファイルは安全な場所に保管し、GitHubには載せないでください
-- Postgresに復元したあとは、IDの連番を合わせてください:
-  `SELECT setval(pg_get_serial_sequence('transactions','id'), (SELECT MAX(id) FROM transactions));`(users・exclusion_rules も同様)
-- Neonの無料枠にも、一定期間内の時点に戻せる機能(履歴保持)があります
