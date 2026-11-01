@@ -159,3 +159,35 @@ def test_rule_toggle_and_delete(client_for):
     cl.post(f"/rules/{suica.id}/delete")
     db_session.remove()
     assert db_session.get(ExclusionRule, suica.id) is None
+
+
+def tx_count(user_id):
+    db_session.remove()
+    return db_session.query(Transaction).filter_by(user_id=user_id).count()
+
+
+def test_reset_requires_confirmation(client_for):
+    cl = client_for(1)
+    cl.upload()
+    cl.post("/settings/reset")
+    assert tx_count(1) == 5
+
+
+def test_reset_month_only_deletes_that_month(client_for):
+    cl = client_for(1)
+    cl.upload()
+    cl.post("/transactions/new", date="2026-10-01", merchant="10月の店", amount="1000")
+    cl.post("/settings/reset", month="2026-09", confirm="1")
+    assert tx_count(1) == 1  # 9月の5件だけ消え、10月の1件は残る
+    assert find_tx(1, "10月の店") is not None
+
+
+def test_reset_all_keeps_family_data_and_allows_reimport(client_for):
+    me, mom = client_for(1), client_for(3)
+    me.upload()
+    mom.upload()
+    me.post("/settings/reset", confirm="1")
+    assert tx_count(1) == 0
+    assert tx_count(3) == 5  # 家族の明細は消えない
+    me.upload()  # リセット後は取り込み直せる
+    assert tx_count(1) == 5

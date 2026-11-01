@@ -6,11 +6,11 @@
 from __future__ import annotations
 
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from .auth import admin_required, login_required
 from .classifier import apply_classification, load_rules, reclassify_all, reclassify_user
@@ -189,6 +189,28 @@ def save_period():
         reclassify_user(db_session, g.user)
     db_session.commit()
     flash("集計期間を保存しました。対象金額は新しい期間で再計算されます。", "info")
+    return redirect(url_for("main.settings"))
+
+
+@bp.post("/settings/reset")
+@login_required
+def reset_data():
+    """自分の明細(CSV取込・手動登録)を、全部または指定した月の分だけ削除する。家族の明細と設定は残す。"""
+    if request.form.get("confirm") != "1":
+        flash("「削除してよい」にチェックを入れてください。", "error")
+        return redirect(url_for("main.settings"))
+    query, month = delete(Transaction).where(Transaction.user_id == g.user.id), request.form.get("month")
+    if month is not None:
+        try:
+            start = datetime.strptime(month, "%Y-%m")
+        except ValueError:
+            flash("削除する月を選んでください。", "error")
+            return redirect(url_for("main.settings"))
+        end = (start + timedelta(days=32)).replace(day=1)
+        query = query.where(Transaction.used_at >= start, Transaction.used_at < end)
+    count = db_session.execute(query).rowcount
+    db_session.commit()
+    flash(f"{f'{start:%Y年%m月}の' if month else 'すべての'}明細を{count}件削除しました。", "info")
     return redirect(url_for("main.settings"))
 
 
