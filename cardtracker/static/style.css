@@ -46,6 +46,8 @@ button.primary, .button.primary { background: var(--accent); border-color: var(-
 button.wide { width: 100%; }
 .link-button { border: none; background: none; padding: 4px 0; min-height: auto; color: var(--accent); text-decoration: underline; }
 .link-button.danger { color: var(--danger); }
+button.danger-button { border-color: var(--danger); color: var(--danger); }
+.reset-all { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 .button-row { display: flex; flex-wrap: wrap; gap: 8px; }
 form { margin: 0; }
 
